@@ -43,7 +43,7 @@ check_os() {
 
   case "$OS" in
     Linux)   ;;
-    *)        echo "Operating system $OS is not supported by this installer." && exit 1 ;;
+    *)        echo -e "Your operating system $OS is not supported by this installer.\n\nPlease consider using Docker to run Scylla on this machine:\n\nhttps://hub.docker.com/r/scylladb/scylla" && exit 1 ;;
   esac
 }
 
