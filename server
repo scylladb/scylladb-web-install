@@ -88,6 +88,7 @@ main() {
   fi
 
   case "$ID" in
+    "amzn") amzn_install ;;
     "centos") centos_install ;;
     "debian") debian_install ;;
     "fedora") fedora_install ;;
@@ -129,6 +130,26 @@ install_rpm() {
   SCYLLA_RPM_URL="http://downloads.scylladb.com/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
   curl -s -L -o /etc/yum.repos.d/scylla.repo "$SCYLLA_RPM_URL"
   yum install --assumeyes --quiet "scylla-$SCYLLA_VERSION"
+}
+
+check_amzn_version() {
+  case "$VERSION_ID" in
+    "2")
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+amzn_install() {
+  if check_amzn_version = 0; then
+    echo "Amazon Linux $VERSION_ID is not supported by this installer."
+    exit 1
+  fi
+  echo "Installing Scylla version $SCYLLA_VERSION for Amazon Linux ..."
+  install_rpm
 }
 
 check_centos_version() {
