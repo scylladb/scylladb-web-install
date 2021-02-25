@@ -47,8 +47,25 @@ check_os() {
   esac
 }
 
+echo_msg() {
+  if [ $DRY_RUN -eq 0 ]; then
+    echo $*
+  fi
+}
+
+run_cmd() {
+  CMD=("$@")
+  if [ $DRY_RUN -eq 0 ]; then
+    "${CMD[@]}"
+  else
+    echo "${CMD[@]}"
+  fi
+}
+
 main() {
   require_cmd curl
+
+  DRY_RUN=0
 
   SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=scylla)
 
@@ -65,6 +82,10 @@ main() {
       "--scylla-version")
         SCYLLA_VERSION="$2"
         shift 2
+        ;;
+      "--dry-run")
+        DRY_RUN=1
+        shift 1
         ;;
       *)
         usage
@@ -98,7 +119,7 @@ main() {
     *) echo "Operating system '$ID' is not supported by this installer." && exit 1
   esac
 
-  echo "Scylla installation done!"
+  echo_msg "Scylla installation done!"
 }
 
 usage() {
@@ -111,6 +132,7 @@ USAGE:
 
 FLAGS:
     -h, --help              Prints help information
+        --dry-run           Print out commands instead of executing them.
 
 OPTIONS:
 	--scylla-version <version>                 Scylla version to install (default: $SCYLLA_VERSION)
@@ -128,8 +150,8 @@ require_cmd() {
 
 install_rpm() {
   SCYLLA_RPM_URL="http://downloads.scylladb.com/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
-  curl -s -L -o /etc/yum.repos.d/scylla.repo "$SCYLLA_RPM_URL"
-  yum install --assumeyes --quiet "scylla-$SCYLLA_VERSION"
+  run_cmd curl -s -L -o /etc/yum.repos.d/scylla.repo "$SCYLLA_RPM_URL"
+  run_cmd yum install --assumeyes --quiet "scylla-$SCYLLA_VERSION"
 }
 
 check_amzn_version() {
@@ -148,7 +170,7 @@ amzn_install() {
     echo "Amazon Linux $VERSION_ID is not supported by this installer."
     exit 1
   fi
-  echo "Installing Scylla version $SCYLLA_VERSION for Amazon Linux ..."
+  echo_msg "Installing Scylla version $SCYLLA_VERSION for Amazon Linux ..."
   install_rpm
 }
 
@@ -168,13 +190,13 @@ centos_install() {
     echo "CentOS $VERSION_ID is not supported by this installer."
     exit 1
   fi
-  echo "Installing Scylla version $SCYLLA_VERSION for CentOS ..."
+  echo_msg "Installing Scylla version $SCYLLA_VERSION for CentOS ..."
   yum install --assumeyes --quiet epel-release
   install_rpm
 }
 
 fedora_install() {
-  echo "Installing Scylla version $SCYLLA_VERSION for Fedora ..."
+  echo_msg "Installing Scylla version $SCYLLA_VERSION for Fedora ..."
   install_rpm
 }
 
@@ -194,8 +216,8 @@ rhel_install() {
     echo "Red Hat Enterprise Linux $VERSION_ID is not supported by this installer."
     exit 1
   fi
-  echo "Installing Scylla version $SCYLLA_VERSION for Red Hat Enterprise Linux ..."
-  yum install --assumeyes --quiet https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  echo_msg "Installing Scylla version $SCYLLA_VERSION for Red Hat Enterprise Linux ..."
+  run_cmd yum install --assumeyes --quiet https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   install_rpm
 }
 
@@ -215,8 +237,8 @@ ol_install() {
     echo "Oracle Linux $VERSION_ID is not supported by this installer."
     exit 1
   fi
-  echo "Installing Scylla version $SCYLLA_VERSION for Oracle Linux ..."
-  yum install --assumeyes --quiet https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  echo_msg "Installing Scylla version $SCYLLA_VERSION for Oracle Linux ..."
+  run_cmd yum install --assumeyes --quiet https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   install_rpm
 }
 
@@ -236,13 +258,15 @@ debian_install() {
     echo "Debian $VERSION_ID is not supported by this installer."
     exit 1
   fi
-  echo "Installing Scylla version $SCYLLA_VERSION for Debian ..."
+  echo_msg "Installing Scylla version $SCYLLA_VERSION for Debian ..."
   export DEBIAN_FRONTEND=noninteractive
-  apt update && apt-get install -qq apt-transport-https curl gnupg2 dirmngr
-  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
+  run_cmd apt update
+  run_cmd apt-get install -qq apt-transport-https curl gnupg2 dirmngr
+  run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
   SCYLLA_DEBIAN_URL="http://downloads.scylladb.com/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
-  curl -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_DEBIAN_URL"
-  apt update && apt-get install -qq "scylla=$SCYLLA_VERSION*"
+  run_cmd curl -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_DEBIAN_URL"
+  run_cmd apt update
+  run_cmd apt-get install -qq "scylla=$SCYLLA_VERSION*"
 }
 
 check_ubuntu_version() {
@@ -261,17 +285,19 @@ ubuntu_install() {
     echo "Ubuntu $VERSION_ID is not supported by this installer."
     exit 1
   fi
+  run_cmd apt update
   if [ "$VERSION_ID" = "16.04" ]; then
-    apt update && apt-get install -qq curl gnupg2 apt-transport-https
+    run_cmd apt-get install -qq curl gnupg2 apt-transport-https
   else
-    apt update && apt-get install -qq curl gnupg2
+    run_cmd apt-get install -qq curl gnupg2
   fi
-  echo "Installing Scylla version $SCYLLA_VERSION for Ubuntu ..."
+  echo_msg "Installing Scylla version $SCYLLA_VERSION for Ubuntu ..."
   export DEBIAN_FRONTEND=noninteractive
-  apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
+  run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
   SCYLLA_UBUNTU_URL="http://downloads.scylladb.com/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
-  curl -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_UBUNTU_URL"
-  apt update && apt-get install -qq "scylla=$SCYLLA_VERSION*"
+  run_cmd curl -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_UBUNTU_URL"
+  run_cmd apt update
+  run_cmd apt-get install -qq "scylla=$SCYLLA_VERSION*"
 }
 
 main "$@"
