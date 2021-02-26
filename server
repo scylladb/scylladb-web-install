@@ -62,14 +62,18 @@ run_cmd() {
   fi
 }
 
+query_default_version() {
+  DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=scylla)
+
+  DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
+}
+
 main() {
   require_cmd curl
 
   DRY_RUN=0
 
-  DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=scylla)
-
-  DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
+  query_default_version
 
   SCYLLA_VERSION="$DEFAULT_SCYLLA_VERSION"
 
