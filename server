@@ -63,7 +63,20 @@ run_cmd() {
 }
 
 query_default_version() {
-  DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=scylla)
+  case "$SCYLLA_PRODUCT" in
+    "scylla")
+      VERSION_CHECK_SYSTEM="scylla"
+      ;;
+    "scylla-enterprise")
+      VERSION_CHECK_SYSTEM="enterprise"
+      ;;
+    *)
+      echo "The product '$SCYLLA_PRODUCT' is not supported by this installer."
+      exit 1
+      ;;
+  esac
+
+  DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=$VERSION_CHECK_SYSTEM)
 
   DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
 }
@@ -75,6 +88,9 @@ main() {
 
   USAGE=0
 
+  DEFAULT_SCYLLA_PRODUCT="scylla"
+  SCYLLA_PRODUCT="$DEFAULT_SCYLLA_PRODUCT"
+
   SCYLLA_VERSION=""
 
   while [ $# -gt 0 ]; do
@@ -82,6 +98,10 @@ main() {
       "-h" | "--help")
         USAGE=1
         shift 1
+        ;;
+      "--scylla-product")
+        SCYLLA_PRODUCT="$2"
+        shift 2
         ;;
       "--scylla-version")
         SCYLLA_VERSION="$2"
@@ -152,6 +172,7 @@ FLAGS:
         --dry-run           Print out commands instead of executing them.
 
 OPTIONS:
+	--scylla-product <product>                 Scylla product to install (default: $DEFAULT_SCYLLA_PRODUCT)
 	--scylla-version <version>                 Scylla version to install (default: $DEFAULT_SCYLLA_VERSION)
 EOF
 }
@@ -168,7 +189,7 @@ require_cmd() {
 install_rpm() {
   SCYLLA_RPM_URL="http://downloads.scylladb.com/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
   run_cmd curl -s -L -o /etc/yum.repos.d/scylla.repo "$SCYLLA_RPM_URL"
-  run_cmd yum install --assumeyes --quiet "scylla-$SCYLLA_VERSION"
+  run_cmd yum install --assumeyes --quiet "$SCYLLA_PRODUCT-$SCYLLA_VERSION"
 }
 
 check_amzn_version() {
@@ -283,7 +304,7 @@ debian_install() {
   SCYLLA_DEBIAN_URL="http://downloads.scylladb.com/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
   run_cmd curl -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_DEBIAN_URL"
   run_cmd apt update
-  run_cmd apt-get install -qq "scylla=$SCYLLA_VERSION*"
+  run_cmd apt-get install -qq "$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
 }
 
 check_ubuntu_version() {
@@ -314,7 +335,7 @@ ubuntu_install() {
   SCYLLA_UBUNTU_URL="http://downloads.scylladb.com/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
   run_cmd curl -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_UBUNTU_URL"
   run_cmd apt update
-  run_cmd apt-get install -qq "scylla=$SCYLLA_VERSION*"
+  run_cmd apt-get install -qq "$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
 }
 
 main "$@"
