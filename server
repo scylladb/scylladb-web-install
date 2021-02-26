@@ -73,15 +73,15 @@ main() {
 
   DRY_RUN=0
 
-  query_default_version
+  USAGE=0
 
-  SCYLLA_VERSION="$DEFAULT_SCYLLA_VERSION"
+  SCYLLA_VERSION=""
 
   while [ $# -gt 0 ]; do
     case "$1" in
       "-h" | "--help")
-        usage
-	exit 1
+        USAGE=1
+        shift 1
         ;;
       "--scylla-version")
         SCYLLA_VERSION="$2"
@@ -92,13 +92,24 @@ main() {
         shift 1
         ;;
       *)
-        usage
-	exit 1
+        USAGE=1
+        shift 1
         ;;
     esac
   done
 
+  if [ -z "$SCYLLA_VERSION" ]; then
+    query_default_version
+
+    SCYLLA_VERSION="$DEFAULT_SCYLLA_VERSION"
+  fi
+
   SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+.[[:digit:]]\+\).*/\1/g")
+
+  if [ $USAGE -eq 1 ]; then
+    usage
+    exit 1
+  fi
 
   check_arch
 
