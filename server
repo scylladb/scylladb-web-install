@@ -67,11 +67,11 @@ main() {
 
   DRY_RUN=0
 
-  SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=scylla)
+  DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=scylla)
 
-  SCYLLA_VERSION=$(echo $SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
+  DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
 
-  SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+.[[:digit:]]\+\).*/\1/g")
+  SCYLLA_VERSION="$DEFAULT_SCYLLA_VERSION"
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -93,6 +93,8 @@ main() {
         ;;
     esac
   done
+
+  SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+.[[:digit:]]\+\).*/\1/g")
 
   check_arch
 
@@ -135,7 +137,7 @@ FLAGS:
         --dry-run           Print out commands instead of executing them.
 
 OPTIONS:
-	--scylla-version <version>                 Scylla version to install (default: $SCYLLA_VERSION)
+	--scylla-version <version>                 Scylla version to install (default: $DEFAULT_SCYLLA_VERSION)
 EOF
 }
 
