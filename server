@@ -234,7 +234,7 @@ centos_install() {
     exit 1
   fi
   echo_msg "Installing Scylla version $SCYLLA_VERSION for CentOS ..."
-  yum install --assumeyes --quiet epel-release
+  run_cmd yum install --assumeyes --quiet epel-release
   install_rpm
 }
 
