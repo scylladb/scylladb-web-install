@@ -62,7 +62,7 @@ run_cmd() {
   fi
 }
 
-query_default_version() {
+check_product() {
   case "$SCYLLA_PRODUCT" in
     "scylla")
       VERSION_CHECK_SYSTEM="scylla"
@@ -75,7 +75,9 @@ query_default_version() {
       exit 1
       ;;
   esac
+}
 
+query_default_version() {
   DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=$VERSION_CHECK_SYSTEM)
 
   DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
@@ -118,6 +120,7 @@ main() {
     esac
   done
 
+  check_product
   if [ -z "$SCYLLA_VERSION" ]; then
     query_default_version
 
