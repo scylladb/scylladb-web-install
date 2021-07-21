@@ -2,13 +2,27 @@
 #
 # A platform agnostic Scylla server installation script.
 #
-#  To install latest version, run:
+#  Options:
+#  [--scylla-product scylla|scylla-enterprise] Scylla product to install (default: scylla)
+#  [--scylla-version <version>]                Scylla version to install
+#
+#  To install latest official version, run:
 #
 #    curl -sSf get.scylladb.com/server | sudo bash
 #
-#  To install a specific version, run:
+#  To install a specific (stable) version, run:
 #
-#    curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version=4.1.0
+#    curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version 4.1.0
+#
+#  To install latest nightly version (for the brave), run:
+#
+#    curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version nightly-version
+#    version examples:
+#       --scylla-version nightly-master will install master latest nightly version
+#       --scylla-version nightly-4.5 will install 4.5 latest nightly version
+#       For enterprise product:
+#       --scylla-version nightly-enterprise will install enterprise latest nightly version
+#       --scylla-version nightly-2021.1 will install 2021.1 latest nightly version
 #
 # Flags:
 # -h, --help - Prints help information
@@ -76,9 +90,11 @@ check_product() {
   case "$SCYLLA_PRODUCT" in
     "scylla")
       VERSION_CHECK_SYSTEM="scylla"
+      BRANCH_WORD="branch-"
       ;;
     "scylla-enterprise")
       VERSION_CHECK_SYSTEM="enterprise"
+      BRANCH_WORD="enterprise-"
       ;;
     *)
       echo "The product '$SCYLLA_PRODUCT' is not supported by this installer."
@@ -91,6 +107,40 @@ query_default_version() {
   DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=$VERSION_CHECK_SYSTEM)
 
   DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
+}
+
+setup_install() {
+  if [[ $SCYLLA_VERSION == *"nightly"* ]]; then
+    SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
+    if [ $SCYLLA_RELEASE == "master" ] || [ $SCYLLA_RELEASE == "enterprise" ]; then
+      BRANCH_WORD=""
+    fi
+
+    if [ $1 == "debian" ]; then
+      SCYLLA_DEBIAN_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
+      SCYLLA_DEBIAN_PRODUCT_VERSION=$SCYLLA_PRODUCT
+    elif [ $1 == "ubuntu" ]; then
+      SCYLLA_UBUNTU_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
+      SCYLLA_UBUNTU_PRODUCT_VERSION=$SCYLLA_PRODUCT
+    else
+      set_rpm_install_tool
+      SCYLLA_RPM_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/rpm/centos/latest/scylla.repo"
+      SCYLLA_RPM_PRODUCT_VERSION=$SCYLLA_PRODUCT
+    fi
+  else
+    SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+.[[:digit:]]\+\).*/\1/g")
+    if [ $1 == "debian" ]; then
+      SCYLLA_DEBIAN_URL="$SCYLLA_BASE_URL/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
+      SCYLLA_DEBIAN_PRODUCT_VERSION="$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
+    elif [ $1 == "ubuntu" ]; then
+      SCYLLA_UBUNTU_URL="$SCYLLA_BASE_URL/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
+      SCYLLA_UBUNTU_PRODUCT_VERSION="$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
+    else
+      set_rpm_install_tool
+      SCYLLA_RPM_URL="$SCYLLA_BASE_URL/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
+      SCYLLA_RPM_PRODUCT_VERSION="$SCYLLA_PRODUCT-$SCYLLA_VERSION"
+    fi
+  fi
 }
 
 main() {
@@ -160,8 +210,6 @@ main() {
     SCYLLA_VERSION="$DEFAULT_SCYLLA_VERSION"
   fi
 
-  SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+.[[:digit:]]\+\).*/\1/g")
-
   if [ $USAGE -eq 1 ]; then
     usage
     exit 1
@@ -180,6 +228,8 @@ main() {
       echo "/etc/os-release missing."
       exit 1
   fi
+
+  setup_install $ID
 
   case "$ID" in
     "amzn") amzn_install ;;
@@ -207,11 +257,18 @@ FLAGS:
     -h, --help              Prints help information
 
 OPTIONS:
-	--scylla-product <product>                 Scylla product to install (default: $DEFAULT_SCYLLA_PRODUCT)
-	--scylla-version <version>                 Scylla version to install (default: $DEFAULT_SCYLLA_VERSION)
+  [--scylla-product scylla|scylla-enterprise] - Scylla product to install (default: $DEFAULT_SCYLLA_PRODUCT)
+  [--scylla-version <version>] - Scylla version to install (default: $DEFAULT_SCYLLA_VERSION)
+  Version examples:
+    --scylla-version nightly-master will install master latest nightly version
+    --scylla-version nightly-4.5 will install 4.5 latest nightly version
+    For enterprise product:
+    --scylla-version nightly-enterprise will install enterprise latest nightly version
+    --scylla-version nightly-2021.1 will install 2021.1 latest nightly version
 
 DEBUG OPTIONS:
   [--scylla-base-url <url>] URL to test installation from a testing URL.
+
 DEBUG FLAGS:
   [--debug-run] - use slim/minimal dockers when needed, and skip epel installation.
   [--dry-run] -   Prints out commands instead of executing them.
@@ -238,14 +295,13 @@ set_rpm_install_tool() {
 }
 
 install_rpm() {
-  SCYLLA_RPM_URL="$SCYLLA_BASE_URL/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
   ret=0
   run_cmd curl -f -s -L -o /etc/yum.repos.d/scylla.repo "$SCYLLA_RPM_URL" || ret=$?
   if [ $ret -ne 0 ]; then
     echo "Your OS is not supported by this installer because there is no package repository."
     exit 1
   fi
-  run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM "$SCYLLA_PRODUCT-$SCYLLA_VERSION"
+  run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM $SCYLLA_RPM_PRODUCT_VERSION
 }
 
 check_amzn_version() {
@@ -365,7 +421,6 @@ debian_install() {
   run_cmd apt update
   run_cmd apt-get install $APT_FLAGS apt-transport-https curl gnupg2 dirmngr
   ret=0
-  SCYLLA_DEBIAN_URL="$SCYLLA_BASE_URL/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
   run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_DEBIAN_URL" || ret=$?
   if [ $ret -ne 0 ]; then
     echo "Your OS is not supported by this installer because there is no package repository."
@@ -374,7 +429,7 @@ debian_install() {
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Debian ..."
   run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
   run_cmd apt update
-  run_cmd apt-get install $APT_FLAGS "$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
+  run_cmd apt-get install $APT_FLAGS $SCYLLA_DEBIAN_PRODUCT_VERSION
 }
 
 check_ubuntu_version() {
@@ -400,7 +455,6 @@ ubuntu_install() {
   else
     run_cmd apt-get install $APT_FLAGS curl gnupg2
   fi
-  SCYLLA_UBUNTU_URL="$SCYLLA_BASE_URL/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
   ret=0
   run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_UBUNTU_URL" || ret=$?
   if [ $ret -ne 0 ]; then
@@ -410,7 +464,7 @@ ubuntu_install() {
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Ubuntu ..."
   run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
   run_cmd apt update
-  run_cmd apt-get install $APT_FLAGS "$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
+  run_cmd apt-get install $APT_FLAGS $SCYLLA_UBUNTU_PRODUCT_VERSION
 }
 
 main "$@"
