@@ -10,6 +10,16 @@
 #
 #    curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version=4.1.0
 #
+# Flags:
+# -h, --help - Prints help information
+#
+# DEBUG OPTIONS:
+# [--scylla-base-url <url>] URL to test installation from a testing URL.
+# DEBUG FLAGS:
+# [--debug-run] - use slim/minimal dockers when needed, and skip epel installation.
+# [--dry-run] -   Prints out commands instead of executing them.
+# [--verbose] -   Runs install commands with no quiet option, and more info.
+#
 # This file is open source software, licensed to you under the terms
 # of the Apache License, Version 2.0 (the "License").  See the NOTICE file
 # distributed with this work for additional information regarding copyright
@@ -87,6 +97,9 @@ main() {
   require_cmd curl
 
   DRY_RUN=0
+  SCYLLA_BASE_URL="http://downloads.scylladb.com"
+  DEBUG_RUN=0
+  VERBOSE=0
 
   USAGE=0
 
@@ -113,12 +126,32 @@ main() {
         DRY_RUN=1
         shift 1
         ;;
+      "--debug-run")
+        DEBUG_RUN=1
+        shift 1
+        ;;
+      "--scylla-base-url")
+        SCYLLA_BASE_URL="$2"
+        shift 2
+        ;;
+      "--verbose")
+        VERBOSE=1
+        shift 1
+        ;;
       *)
         USAGE=1
         shift 1
         ;;
     esac
   done
+
+  if [ $VERBOSE -eq 1 ]; then
+    YUM_QUIET_CMD_PARAM="--assumeyes"
+    APT_FLAGS="--assume-yes"
+  else
+    YUM_QUIET_CMD_PARAM="--assumeyes --quiet"
+    APT_FLAGS="-qq"
+  fi
 
   check_product
   if [ -z "$SCYLLA_VERSION" ]; then
@@ -172,11 +205,18 @@ USAGE:
 
 FLAGS:
     -h, --help              Prints help information
-        --dry-run           Print out commands instead of executing them.
 
 OPTIONS:
 	--scylla-product <product>                 Scylla product to install (default: $DEFAULT_SCYLLA_PRODUCT)
 	--scylla-version <version>                 Scylla version to install (default: $DEFAULT_SCYLLA_VERSION)
+
+DEBUG OPTIONS:
+  [--scylla-base-url <url>] URL to test installation from a testing URL.
+DEBUG FLAGS:
+  [--debug-run] - use slim/minimal dockers when needed, and skip epel installation.
+  [--dry-run] -   Prints out commands instead of executing them.
+  [--verbose] -   Runs install commands with no quiet option, and more info.
+
 EOF
 }
 
@@ -189,15 +229,23 @@ require_cmd() {
   fi
 }
 
+set_rpm_install_tool() {
+  RPM_INSTALL_TOOL="yum"
+  if [ $DEBUG_RUN -eq 1 ]; then
+    RPM_INSTALL_TOOL="microdnf"
+  fi
+  require_cmd $RPM_INSTALL_TOOL
+}
+
 install_rpm() {
-  SCYLLA_RPM_URL="http://downloads.scylladb.com/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
+  SCYLLA_RPM_URL="$SCYLLA_BASE_URL/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
   ret=0
   run_cmd curl -f -s -L -o /etc/yum.repos.d/scylla.repo "$SCYLLA_RPM_URL" || ret=$?
   if [ $ret -ne 0 ]; then
     echo "Your OS is not supported by this installer because there is no package repository."
     exit 1
   fi
-  run_cmd yum install --assumeyes --quiet "$SCYLLA_PRODUCT-$SCYLLA_VERSION"
+  run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM "$SCYLLA_PRODUCT-$SCYLLA_VERSION"
 }
 
 check_amzn_version() {
@@ -217,6 +265,7 @@ amzn_install() {
     exit 1
   fi
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Amazon Linux ..."
+  set_rpm_install_tool
   install_rpm
 }
 
@@ -236,13 +285,15 @@ centos_install() {
     echo "CentOS $VERSION_ID is not supported by this installer."
     exit 1
   fi
+  set_rpm_install_tool
   echo_msg "Installing Scylla version $SCYLLA_VERSION for CentOS ..."
-  run_cmd yum install --assumeyes --quiet epel-release
+  run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM epel-release
   install_rpm
 }
 
 fedora_install() {
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Fedora ..."
+  set_rpm_install_tool
   install_rpm
 }
 
@@ -263,7 +314,10 @@ rhel_install() {
     exit 1
   fi
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Red Hat Enterprise Linux ..."
-  run_cmd yum install --assumeyes --quiet https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  set_rpm_install_tool
+  if [ $DEBUG_RUN -eq 0 ]; then
+    run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  fi
   install_rpm
 }
 
@@ -284,7 +338,10 @@ ol_install() {
     exit 1
   fi
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Oracle Linux ..."
-  run_cmd yum install --assumeyes --quiet https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  set_rpm_install_tool
+  if [ $DEBUG_RUN -eq 0 ]; then
+    run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  fi
   install_rpm
 }
 
@@ -306,9 +363,9 @@ debian_install() {
   fi
   export DEBIAN_FRONTEND=noninteractive
   run_cmd apt update
-  run_cmd apt-get install -qq apt-transport-https curl gnupg2 dirmngr
+  run_cmd apt-get install $APT_FLAGS apt-transport-https curl gnupg2 dirmngr
   ret=0
-  SCYLLA_DEBIAN_URL="http://downloads.scylladb.com/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
+  SCYLLA_DEBIAN_URL="$SCYLLA_BASE_URL/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
   run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_DEBIAN_URL" || ret=$?
   if [ $ret -ne 0 ]; then
     echo "Your OS is not supported by this installer because there is no package repository."
@@ -317,7 +374,7 @@ debian_install() {
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Debian ..."
   run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
   run_cmd apt update
-  run_cmd apt-get install -qq "$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
+  run_cmd apt-get install $APT_FLAGS "$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
 }
 
 check_ubuntu_version() {
@@ -339,11 +396,11 @@ ubuntu_install() {
   export DEBIAN_FRONTEND=noninteractive
   run_cmd apt update
   if [ "$VERSION_ID" = "16.04" ]; then
-    run_cmd apt-get install -qq curl gnupg2 apt-transport-https
+    run_cmd apt-get install $APT_FLAGS curl gnupg2 apt-transport-https
   else
-    run_cmd apt-get install -qq curl gnupg2
+    run_cmd apt-get install $APT_FLAGS curl gnupg2
   fi
-  SCYLLA_UBUNTU_URL="http://downloads.scylladb.com/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
+  SCYLLA_UBUNTU_URL="$SCYLLA_BASE_URL/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
   ret=0
   run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_UBUNTU_URL" || ret=$?
   if [ $ret -ne 0 ]; then
@@ -353,7 +410,7 @@ ubuntu_install() {
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Ubuntu ..."
   run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
   run_cmd apt update
-  run_cmd apt-get install -qq "$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
+  run_cmd apt-get install $APT_FLAGS "$SCYLLA_PRODUCT=$SCYLLA_VERSION*"
 }
 
 main "$@"
