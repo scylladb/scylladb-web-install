@@ -196,12 +196,13 @@ main() {
     esac
   done
 
+  RETRY_OPTION="-o Acquire::Retries=3"
   if [ $VERBOSE -eq 1 ]; then
     YUM_QUIET_CMD_PARAM="--assumeyes"
-    APT_FLAGS="--assume-yes"
+    APT_FLAGS="--assume-yes $RETRY_OPTION"
   else
     YUM_QUIET_CMD_PARAM="--assumeyes --quiet"
-    APT_FLAGS="-qq"
+    APT_FLAGS="-qq $RETRY_OPTION"
   fi
 
   check_product
