@@ -104,6 +104,13 @@ check_product() {
   esac
 }
 
+is_rc_version() {
+  if [[ $SCYLLA_VERSION == *rc* ]]; then
+    # replace the 2nd '.' with '~' for RC versions, ex. 4.6.rc0 -> 4.6~rc0
+    SCYLLA_VERSION=$(echo $SCYLLA_VERSION | sed 's/\(.*\)\.)*/\1~/')
+  fi
+}
+
 query_default_version() {
   DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=$VERSION_CHECK_SYSTEM)
 
@@ -118,9 +125,11 @@ setup_install() {
     fi
 
     if [ $1 == "debian" ]; then
+      is_rc_version
       SCYLLA_DEBIAN_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
       SCYLLA_DEBIAN_PRODUCT_VERSION=$SCYLLA_PRODUCT
     elif [ $1 == "ubuntu" ]; then
+      is_rc_version
       SCYLLA_UBUNTU_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
       SCYLLA_UBUNTU_PRODUCT_VERSION=$SCYLLA_PRODUCT
     else
