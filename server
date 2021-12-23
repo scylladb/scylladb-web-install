@@ -121,7 +121,10 @@ setup_install() {
   if [[ $SCYLLA_VERSION == *"nightly"* ]]; then
     SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
     if [ $SCYLLA_RELEASE == "master" ] || [ $SCYLLA_RELEASE == "enterprise" ]; then
+      SCYLLA_GPG_KEY = "d0a112e067426ab2"
       BRANCH_WORD=""
+    else
+      SCYLLA_GPG_KEY = "5e08fbd8b5d6ec9c"
     fi
 
     if [ $1 == "debian" ]; then
@@ -438,7 +441,7 @@ debian_install() {
     exit 1
   fi
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Debian ..."
-  run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
+  run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
   run_cmd apt update
   run_cmd apt-get install $APT_FLAGS $SCYLLA_DEBIAN_PRODUCT_VERSION
 }
@@ -473,7 +476,7 @@ ubuntu_install() {
     exit 1
   fi
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Ubuntu ..."
-  run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 5e08fbd8b5d6ec9c
+  run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
   run_cmd apt update
   run_cmd apt-get install $APT_FLAGS $SCYLLA_UBUNTU_PRODUCT_VERSION
 }
