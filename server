@@ -117,16 +117,22 @@ query_default_version() {
   DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
 }
 
+set_gpg_key() {
+  SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
+  if [ $SCYLLA_RELEASE == *"master"* ] || [ $SCYLLA_RELEASE == *"enterprise"* ]; then
+    SCYLLA_GPG_KEY="d0a112e067426ab2"
+  else
+    SCYLLA_GPG_KEY="5e08fbd8b5d6ec9c"
+  fi
+}
+
 setup_install() {
+  set_gpg_key
   if [[ $SCYLLA_VERSION == *"nightly"* ]]; then
     SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
     if [ $SCYLLA_RELEASE == "master" ] || [ $SCYLLA_RELEASE == "enterprise" ]; then
-      SCYLLA_GPG_KEY="d0a112e067426ab2"
       BRANCH_WORD=""
-    else
-      SCYLLA_GPG_KEY="5e08fbd8b5d6ec9c"
     fi
-
     if [ $1 == "debian" ]; then
       SCYLLA_DEBIAN_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
       SCYLLA_DEBIAN_PRODUCT_VERSION=$SCYLLA_PRODUCT
