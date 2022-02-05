@@ -119,7 +119,7 @@ query_default_version() {
 
 set_gpg_key() {
   SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
-  if [ $SCYLLA_RELEASE == "master" ] || [ $SCYLLA_RELEASE == "enterprise" ]; then
+  if [ $SCYLLA_RELEASE == "master" ] || [ $SCYLLA_RELEASE == "enterprise" ] || [[ "$SCYLLA_VERSION" == *"5.0"* ]]; then
     SCYLLA_GPG_KEY="d0a112e067426ab2"
   else
     SCYLLA_GPG_KEY="5e08fbd8b5d6ec9c"
