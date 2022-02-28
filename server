@@ -119,11 +119,14 @@ query_default_version() {
 
 set_gpg_key() {
   SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
-  if [ $SCYLLA_RELEASE == "master" ] || [ $SCYLLA_RELEASE == "enterprise" ] || [[ "$SCYLLA_VERSION" == *"5.0"* ]]; then
-    SCYLLA_GPG_KEY="d0a112e067426ab2"
-  else
-    SCYLLA_GPG_KEY="5e08fbd8b5d6ec9c"
-  fi
+  case $SCYLLA_RELEASE in
+    *"2020.1"* | *"2021.1"* | *"4.4"* | *"4.5"* | *"4.6"*)
+      SCYLLA_GPG_KEY="5e08fbd8b5d6ec9c"
+      ;;
+    *)
+      SCYLLA_GPG_KEY="d0a112e067426ab2"
+      ;;
+  esac
 }
 
 setup_install() {
