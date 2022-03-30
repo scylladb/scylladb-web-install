@@ -28,7 +28,6 @@
 # -h, --help - Prints help information
 #
 # DEBUG OPTIONS:
-# [--scylla-base-url <url>] URL to test installation from a testing URL.
 # [--scylla-repo-file-url <url>] URL to test installation from a custom URL.
 # DEBUG FLAGS:
 # [--debug-run] - use slim/minimal dockers when needed, and skip epel installation.
@@ -142,29 +141,29 @@ setup_install() {
         BRANCH_WORD=""
       fi
       if [ $1 == "debian" ]; then
-        SCYLLA_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
+        SCYLLA_URL="http://downloads.scylladb.com/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
         SCYLLA_PRODUCT_VERSION=$SCYLLA_PRODUCT
       elif [ $1 == "ubuntu" ]; then
-        SCYLLA_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
+        SCYLLA_URL="http://downloads.scylladb.com/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/deb/unified/latest/scylladb-$SCYLLA_RELEASE/scylla.list"
         SCYLLA_PRODUCT_VERSION=$SCYLLA_PRODUCT
       else
         set_rpm_install_tool
-        SCYLLA_URL="$SCYLLA_BASE_URL/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/rpm/centos/latest/scylla.repo"
+        SCYLLA_URL="http://downloads.scylladb.com/unstable/$SCYLLA_PRODUCT/$BRANCH_WORD$SCYLLA_RELEASE/rpm/centos/latest/scylla.repo"
         SCYLLA_PRODUCT_VERSION=$SCYLLA_PRODUCT
       fi
     else
       SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+.[[:digit:]]\+\).*/\1/g")
       if [ $1 == "debian" ]; then
         is_rc_version
-        SCYLLA_URL="$SCYLLA_BASE_URL/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
+        SCYLLA_URL="http://downloads.scylladb.com/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
         SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}=$SCYLLA_VERSION*"
       elif [ $1 == "ubuntu" ]; then
         is_rc_version
-        SCYLLA_URL="$SCYLLA_BASE_URL/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
+        SCYLLA_URL="http://downloads.scylladb.com/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
         SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}=$SCYLLA_VERSION*"
       else
         set_rpm_install_tool
-        SCYLLA_URL="$SCYLLA_BASE_URL/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
+        SCYLLA_URL="http://downloads.scylladb.com/rpm/centos/scylla-$SCYLLA_RELEASE.repo"
         SCYLLA_PRODUCT_VERSION="$SCYLLA_PRODUCT-$SCYLLA_VERSION"
       fi
     fi
@@ -175,7 +174,6 @@ main() {
   require_cmd curl
 
   DRY_RUN=0
-  SCYLLA_BASE_URL="http://downloads.scylladb.com"
   SCYLLA_REPO_FILE_URL=""
 
   DEBUG_RUN=0
@@ -209,10 +207,6 @@ main() {
       "--debug-run")
         DEBUG_RUN=1
         shift 1
-        ;;
-      "--scylla-base-url")
-        SCYLLA_BASE_URL="$2"
-        shift 2
         ;;
       "--scylla-repo-file-url")
         SCYLLA_REPO_FILE_URL="$2"
@@ -302,7 +296,6 @@ OPTIONS:
     --scylla-version nightly-2021.1 will install 2021.1 latest nightly version
 
 DEBUG OPTIONS:
-  [--scylla-base-url <url>] URL to test installation from a testing URL.
   [--scylla-repo-file-url <url>] URL to test installation from a custom URL.
 
 DEBUG FLAGS:
