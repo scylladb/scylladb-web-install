@@ -1,0 +1,60 @@
+name: Configurable Build Matrix
+
+on:
+  push:
+    branches:
+      main
+  pull_request:
+
+jobs:
+  test_supported_versions:
+    name: Test on ${{matrix.container }} with ${{ matrix.version }}
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+         - 4.5
+         - 4.6
+         - 2021.1
+        include:
+          - version: 2021.1
+            product: --scylla-product scylla-enterprise
+        container:
+          - ubuntu:18.04
+          - ubuntu:20.04
+          - debian:10
+          - debian:9
+          - rockylinux:8
+          - centos:7
+          - oraclelinux:8
+          - public.ecr.aws/amazonlinux/amazonlinux:2
+    steps:
+      - if: contains(matrix.container, 'ubuntu') || contains(matrix.container, 'debian')
+        name: Install packages Ubuntu / Debian
+        run: | 
+          apt-get update && apt-get install -y curl
+
+      - if: contains(matrix.container, 'centos') || contains(matrix.container, 'amazon') || contains(matrix.container, 'oracle') || contains(matrix.container, 'rockylinux')
+        name: Install packages For Centos / Amazonlinux / Rockylinux / Oracle
+        run: |
+          yum update -y && yum install -y curl tar gzip
+
+      - uses: actions/checkout@v2
+
+      - if: contains(matrix.container, 'ubuntu') || contains(matrix.container, 'debian')
+        name: Install Scylla Ubuntu / Debian
+        run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
+
+      - if: contains(matrix.container, 'centos') || contains(matrix.container, 'amazon') || contains(matrix.container, 'oracle') || contains(matrix.container, 'rockylinux')
+        name: Install Scylla Centos / Amazonlinux / Rockylinux / Oracle
+        run: ./server --scylla-version ${{ matrix.version }}.0 ${{ matrix.product }}
+
+  test_latest:
+    name: Test installation for latest version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install packages Ubuntu/Debian
+        run: sudo ./server
