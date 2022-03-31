@@ -1,0 +1,30 @@
+name: Configurable Build Matrix
+
+on: push
+jobs:
+  preperation:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+          architecture: x64
+      - name: Generate json file
+        run: |
+          cd ./tests
+          python json_creation.py
+      - id: set-matrix
+        uses: JoshuaTheMiller/conditional-build-matrix@0.0.1
+        with:
+          filter: '[?product]'
+  build-n-te:
+    needs: preperation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{fromJson(needs.preperation.outputs.matrix)}}
+    steps:
+    - run: echo "Hello ${{ matrix.product }}"
