@@ -254,6 +254,7 @@ main() {
   case "$ID" in
     "amzn") amzn_install ;;
     "centos") centos_install ;;
+    "rocky") centos_install ;;
     "debian") debian_install ;;
     "fedora") fedora_install ;;
     "ol") ol_install ;;
@@ -363,7 +364,6 @@ centos_install() {
   fi
   set_rpm_install_tool
   echo_msg "Installing Scylla version $SCYLLA_VERSION for CentOS ..."
-  run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM epel-release
   install_rpm
 }
 
