@@ -21,10 +21,13 @@ jobs:
         uses: JoshuaTheMiller/conditional-build-matrix@0.0.1
         with:
           filter: '[?product]'
-  build-n-te:
+  tests:
     needs: preperation
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{fromJson(needs.preperation.outputs.matrix)}}
     steps:
-    - run: echo "Hello ${{ matrix.product }}"
+    - name: Install ${{ matrix.product }} ${{ matrix.version }} on ${{ matrix.distro }}
+    - if: startWith(matrix.distro, 'debian || ubuntu')
+      run: | 
+        docker run -v `pwd`:/scylla-web-install -w /scylla-web-install  --rm ${{ matrix.distro }} bash -c 'apt-get update && apt-get install -y curl wget && ./server --scylla-product ${{ matrix.product }} --scylla-version ${{ matrix.version }}'
