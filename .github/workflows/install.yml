@@ -28,6 +28,6 @@ jobs:
       matrix: ${{fromJson(needs.preperation.outputs.matrix)}}
     steps:
     - name: Install ${{ matrix.product }} ${{ matrix.version }} on ${{ matrix.distro }}
-    - if: startWith(matrix.distro, 'debian || ubuntu')
+    - if: startWith(matrix.distro, 'ubuntu')
       run: | 
         docker run -v `pwd`:/scylla-web-install -w /scylla-web-install  --rm ${{ matrix.distro }} bash -c 'apt-get update && apt-get install -y curl wget && ./server --scylla-product ${{ matrix.product }} --scylla-version ${{ matrix.version }}'
