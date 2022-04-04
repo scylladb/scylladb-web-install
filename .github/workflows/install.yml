@@ -25,9 +25,18 @@ jobs:
     needs: preperation
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix: ${{fromJson(needs.preperation.outputs.matrix)}}
     steps:
+      - uses: actions/checkout@v2
+
       - name: Install ${{ matrix.product }} ${{ matrix.version }} on ${{ matrix.distro }}
-      - if: startWith( ${{ matrix.distro }}, 'ubuntu')
+        if: startsWith(matrix.distro,'ubuntu' || 'debian')
         run: | 
-          docker run -v `pwd`:/scylla-web-install -w /scylla-web-install  --rm ${{ matrix.distro }} bash -c 'apt-get update && apt-get install -y curl wget && ./server --scylla-product ${{ matrix.product }} --scylla-version ${{ matrix.version }}'
+            docker run -v `pwd`:/scylla-web-install -w /scylla-web-install  --rm ${{ matrix.distro }} bash -c 'apt-get update && apt-get install -y curl wget && ./server --scylla-product ${{ matrix.product }} --scylla-version ${{ matrix.version }}'
+
+      - name: Install ${{ matrix.product }} ${{ matrix.version }} on ${{ matrix.distro }}
+        if: startsWith(matrix.distro,'centos' || 'rhel' || 'rocky' || 'oracle' || 'amazon')
+        run: | 
+            docker run -v `pwd`:/scylla-web-install -w /scylla-web-install  --rm ${{ matrix.distro }} bash -c 'dnf update && dnf install -y curl wget && ./server --scylla-product ${{ matrix.product }} --scylla-version ${{ matrix.version }}'
+

@@ -10,10 +10,6 @@ jobj = [
   },
   {
     "product":"scylla-enterprise",
-    "version":"2020.1"
-  },
-  {
-    "product":"scylla-enterprise",
     "version":"2021.1"
   }
 ]
