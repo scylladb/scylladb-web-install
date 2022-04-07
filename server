@@ -463,7 +463,7 @@ debian_install() {
 
 check_ubuntu_version() {
   case "$VERSION_ID" in
-    "16.04"|"18.04"|"20.04")
+    "16.04"|"18.04"|"20.04"|"22.04")
       return 1
       ;;
     *)
