@@ -155,11 +155,11 @@ setup_install() {
       SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+.[[:digit:]]\+\).*/\1/g")
       if [ $1 == "debian" ]; then
         is_rc_version
-        SCYLLA_URL="http://downloads.scylladb.com/deb/debian/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
+        SCYLLA_URL="http://downloads.scylladb.com/deb/debian/scylla-$SCYLLA_RELEASE.list"
         SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}=$SCYLLA_VERSION*"
       elif [ $1 == "ubuntu" ]; then
         is_rc_version
-        SCYLLA_URL="http://downloads.scylladb.com/deb/ubuntu/scylla-$SCYLLA_RELEASE-$VERSION_CODENAME.list"
+        SCYLLA_URL="http://downloads.scylladb.com/deb/ubuntu/scylla-$SCYLLA_RELEASE.list"
         SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}=$SCYLLA_VERSION*"
       else
         set_rpm_install_tool
