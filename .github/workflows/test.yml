@@ -1,9 +1,6 @@
-name: Configurable Build Matrix
+name: Tests
 
 on:
-  push:
-    branches:
-      main
   pull_request:
 
 jobs:
