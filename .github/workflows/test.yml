@@ -53,5 +53,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Install packages Ubuntu/Debian
-        run: sudo ./server
+      - run: sudo ./server
