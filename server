@@ -56,11 +56,21 @@ shopt -s extglob
 
 check_arch() {
   ARCH=$(uname -m)
-
-  if [[ "$ARCH" != "x86_64" ]]; then
-    echo "Architecture $ARCH is not supported by this installer."
-    exit 1
-  fi
+  SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
+  case $SCYLLA_RELEASE in
+    *202[1-9].* | 4.6* | *[5-9].*)
+      if [[ "$ARCH" != @("x86_64"|"aarch64") ]]; then
+        echo "Architecture $ARCH is not supported for $SCYLLA_PRODUCT-$SCYLLA_VERSION, for supported os and arch please refer to https://docs.scylladb.com/getting-started/os-support/."
+        exit 1
+      fi
+      ;;
+    *)
+      if [[ "$ARCH" != "x86_64" ]]; then
+        echo "Architecture $ARCH is not supported for $SCYLLA_PRODUCT-$SCYLLA_VERSION, for supported os and arch please refer to https://docs.scylladb.com/getting-started/os-support/."
+        exit 1
+      fi
+      ;;
+  esac
 }
 
 check_os() {
