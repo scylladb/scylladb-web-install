@@ -91,7 +91,7 @@ echo_msg() {
 run_cmd() {
   CMD=("$@")
   if [ $DRY_RUN -eq 0 ]; then
-    "${CMD[@]}"
+   eval "${CMD[@]}"
   else
     echo "${CMD[@]}"
   fi
@@ -180,6 +180,21 @@ setup_install() {
   fi
 }
 
+get_full_version () {
+  PATCH_VERSION=$(echo $SCYLLA_VERSION | cut -d'.' -f 3)
+  if [ -z "$PATCH_VERSION" ] && [[ $SCYLLA_VERSION != *rc* ]] || [ -n "$DEFAULT_SCYLLA_VERSION" ]; then
+    echo "Patch version was not specified"
+  else
+    FULL_SCYLLA_VERSION=$(apt-cache madison ${SCYLLA_PRODUCT} | grep $SCYLLA_VERSION | cut -d'|' -f 2 | sed 's/[[:space:]]//g')
+    if [[ $SCYLLA_PRODUCT =~ "enterprise" ]]; then
+      #not including -node-exporter dependency for scylla-enterprise version
+      SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}{,-server,-jmx,-tools,-tools-core,-kernel-conf,-conf,-python3}=$FULL_SCYLLA_VERSION"
+    else
+      SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}{,-server,-jmx,-tools,-tools-core,-kernel-conf,-node-exporter,-conf,-python3}=$FULL_SCYLLA_VERSION"
+    fi
+  fi
+}
+
 main() {
   require_cmd curl
 
@@ -195,6 +210,7 @@ main() {
   SCYLLA_PRODUCT="$DEFAULT_SCYLLA_PRODUCT"
 
   SCYLLA_VERSION=""
+  DEFAULT_SCYLLA_VERSION=""
 
   while [ $# -gt 0 ]; do
     case "$1" in
@@ -468,6 +484,7 @@ debian_install() {
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Debian ..."
   run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
   run_cmd apt update
+  get_full_version
   run_cmd apt-get install $APT_FLAGS $SCYLLA_PRODUCT_VERSION
 }
 
@@ -503,6 +520,7 @@ ubuntu_install() {
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Ubuntu ..."
   run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
   run_cmd apt update
+  get_full_version
   run_cmd apt-get install $APT_FLAGS $SCYLLA_PRODUCT_VERSION
 }
 
