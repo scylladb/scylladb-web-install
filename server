@@ -506,11 +506,7 @@ ubuntu_install() {
   fi
   export DEBIAN_FRONTEND=noninteractive
   run_cmd apt update
-  if [ "$VERSION_ID" = "16.04" ]; then
-    run_cmd apt-get install $APT_FLAGS curl gnupg2 apt-transport-https
-  else
-    run_cmd apt-get install $APT_FLAGS curl gnupg2
-  fi
+  run_cmd apt-get install $APT_FLAGS curl gnupg2
   ret=0
   run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_URL" || ret=$?
   if [ $ret -ne 0 ]; then
