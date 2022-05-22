@@ -127,6 +127,13 @@ query_default_version() {
   DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
 }
 
+packages_update() {
+  if [[ "$NAME" == @(Ubuntu|Debian)* ]]; then
+    run_cmd apt update
+    run_cmd apt-get install $APT_FLAGS curl gnupg2
+  fi
+}
+
 set_gpg_key() {
   SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
   case $SCYLLA_RELEASE in
@@ -196,7 +203,6 @@ get_full_version () {
 }
 
 main() {
-  require_cmd curl
 
   DRY_RUN=0
   SCYLLA_REPO_FILE_URL=""
@@ -249,6 +255,11 @@ main() {
     esac
   done
 
+  if [ $USAGE -eq 1 ]; then
+    usage
+    exit 1
+  fi
+
   RETRY_OPTION="-o Acquire::Retries=3"
   if [ $VERBOSE -eq 1 ]; then
     YUM_QUIET_CMD_PARAM="--assumeyes"
@@ -259,19 +270,6 @@ main() {
   fi
 
   check_product
-  if [ -z "$SCYLLA_VERSION" ] && [ -z "$SCYLLA_REPO_FILE_URL" ]; then
-    query_default_version
-
-    SCYLLA_VERSION="$DEFAULT_SCYLLA_VERSION"
-  fi
-
-  if [ $USAGE -eq 1 ]; then
-    usage
-    exit 1
-  fi
-
-  check_arch
-
   check_os
 
   # os-release may be missing in container environment by default.
@@ -284,6 +282,15 @@ main() {
       exit 1
   fi
 
+  packages_update
+
+  if [ -z "$SCYLLA_VERSION" ] && [ -z "$SCYLLA_REPO_FILE_URL" ]; then
+    query_default_version
+
+    SCYLLA_VERSION="$DEFAULT_SCYLLA_VERSION"
+  fi
+
+  check_arch
   setup_install $ID
 
   case "$ID" in
@@ -473,8 +480,6 @@ debian_install() {
     exit 1
   fi
   export DEBIAN_FRONTEND=noninteractive
-  run_cmd apt update
-  run_cmd apt-get install $APT_FLAGS apt-transport-https curl gnupg2 dirmngr
   ret=0
   run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_URL" || ret=$?
   if [ $ret -ne 0 ]; then
@@ -505,8 +510,6 @@ ubuntu_install() {
     exit 1
   fi
   export DEBIAN_FRONTEND=noninteractive
-  run_cmd apt update
-  run_cmd apt-get install $APT_FLAGS curl gnupg2
   ret=0
   run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_URL" || ret=$?
   if [ $ret -ne 0 ]; then
