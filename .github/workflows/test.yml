@@ -40,13 +40,12 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - if: contains(matrix.container, 'ubuntu') || contains(matrix.container, 'debian')
-        name: Install Scylla Ubuntu / Debian
-        run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
-
-      - if: contains(matrix.container, 'centos') || contains(matrix.container, 'amazon') || contains(matrix.container, 'oracle') || contains(matrix.container, 'rockylinux')
-        name: Install Scylla Centos / Amazonlinux / Rockylinux / Oracle
+      - name: Install Scylla - first release
         run: ./server --scylla-version ${{ matrix.version }}.0 ${{ matrix.product }}
+
+      - if: contains(matrix.container, 'ubuntu') || contains(matrix.container, 'debian')
+        name: Install Scylla Ubuntu / Debian - latest in version
+        run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
 
   test_latest:
     name: Test installation for latest version
