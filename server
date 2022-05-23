@@ -187,11 +187,9 @@ setup_install() {
   fi
 }
 
-get_full_version () {
+get_full_version() {
   PATCH_VERSION=$(echo $SCYLLA_VERSION | cut -d'.' -f 3)
-  if [ -z "$PATCH_VERSION" ] && [[ $SCYLLA_VERSION != *rc* ]] || [ -n "$DEFAULT_SCYLLA_VERSION" ]; then
-    echo "Patch version was not specified"
-  else
+ if [ -n "$PATCH_VERSION" ] && [ -z "$DEFAULT_SCYLLA_VERSION" ] || [[ $SCYLLA_VERSION == *rc* ]]; then
     FULL_SCYLLA_VERSION=$(apt-cache madison ${SCYLLA_PRODUCT} | grep $SCYLLA_VERSION | cut -d'|' -f 2 | sed 's/[[:space:]]//g')
     if [[ $SCYLLA_PRODUCT =~ "enterprise" ]]; then
       #not including -node-exporter dependency for scylla-enterprise version
