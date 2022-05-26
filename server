@@ -293,13 +293,11 @@ main() {
 
   case "$ID" in
     "amzn") amzn_install ;;
-    "centos") centos_install ;;
-    "rocky") centos_install ;;
-    "debian") debian_install ;;
+    "centos"|"rocky") centos_install ;;
+    "debian"|"ubuntu") deb_install ;;
     "fedora") fedora_install ;;
     "ol") ol_install ;;
     "rhel") rhel_install ;;
-    "ubuntu") ubuntu_install ;;
     *) echo "Operating system '$ID' is not supported by this installer." && exit 1
   esac
 
@@ -461,64 +459,45 @@ ol_install() {
   install_rpm
 }
 
-check_debian_version() {
-  case "$VERSION_ID" in
-    "9"|"10"|"11")
-      return 1
-      ;;
-    *)
-      return 0
-      ;;
-  esac
+check_debian_ubuntu_version() {
+  if [[ "$ID" == "debian" ]]; then
+    case "$VERSION_ID" in
+      "9"|"10"|"11")
+        return 0
+        ;;
+      *)
+        echo "$ID $VERSION_ID is not supported by this installer."
+        exit 1
+        ;;
+    esac
+  elif [[ "$ID" == "ubuntu" ]]; then
+    case "$VERSION_ID" in
+      "16.04"|"18.04"|"20.04"|"22.04")
+        return 0
+        ;;
+      *)
+        echo "$ID $VERSION_ID is not supported by this installer."
+        exit 1
+        ;;
+    esac
+  fi
 }
 
-debian_install() {
-  if check_debian_version = 0; then
-    echo "Debian $VERSION_ID is not supported by this installer."
-    exit 1
+deb_install() {
+  if check_debian_ubuntu_version; then
+    export DEBIAN_FRONTEND=noninteractive
+    ret=0
+    run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_URL" || ret=$?
+    if [ $ret -ne 0 ]; then
+      echo "Your OS is not supported by this installer because there is no package repository."
+      exit 1
+    fi
+    echo_msg "Installing Scylla version $SCYLLA_VERSION for $NAME ..."
+    run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
+    run_cmd apt update
+    get_full_version
+    run_cmd apt-get install $APT_FLAGS $SCYLLA_PRODUCT_VERSION
   fi
-  export DEBIAN_FRONTEND=noninteractive
-  ret=0
-  run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_URL" || ret=$?
-  if [ $ret -ne 0 ]; then
-    echo "Your OS is not supported by this installer because there is no package repository."
-    exit 1
-  fi
-  echo_msg "Installing Scylla version $SCYLLA_VERSION for Debian ..."
-  run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
-  run_cmd apt update
-  get_full_version
-  run_cmd apt-get install $APT_FLAGS $SCYLLA_PRODUCT_VERSION
-}
-
-check_ubuntu_version() {
-  case "$VERSION_ID" in
-    "16.04"|"18.04"|"20.04"|"22.04")
-      return 1
-      ;;
-    *)
-      return 0
-      ;;
-  esac
-}
-
-ubuntu_install() {
-  if check_ubuntu_version = 0; then
-    echo "Ubuntu $VERSION_ID is not supported by this installer."
-    exit 1
-  fi
-  export DEBIAN_FRONTEND=noninteractive
-  ret=0
-  run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_URL" || ret=$?
-  if [ $ret -ne 0 ]; then
-    echo "Your OS is not supported by this installer because there is no package repository."
-    exit 1
-  fi
-  echo_msg "Installing Scylla version $SCYLLA_VERSION for Ubuntu ..."
-  run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
-  run_cmd apt update
-  get_full_version
-  run_cmd apt-get install $APT_FLAGS $SCYLLA_PRODUCT_VERSION
 }
 
 main "$@"
