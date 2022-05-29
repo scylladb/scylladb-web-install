@@ -12,11 +12,11 @@ jobs:
       fail-fast: false
       matrix:
         version:
-         - 4.5
-         - 4.6
-         - 2021.1
+         - 4.5.0
+         - 4.6.0
+         - 2021.1.0
         include:
-          - version: 2021.1
+          - version: 2021.1.0
             product: --scylla-product scylla-enterprise
         container:
           - ubuntu:18.04
@@ -40,13 +40,15 @@ jobs:
 
       - uses: actions/checkout@v2
 
-      - if: contains(matrix.container, 'ubuntu') || contains(matrix.container, 'debian')
-        name: Install Scylla Ubuntu / Debian
+      - name: Install Scylla first release
         run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
 
-      - if: contains(matrix.container, 'centos') || contains(matrix.container, 'amazon') || contains(matrix.container, 'oracle') || contains(matrix.container, 'rockylinux')
-        name: Install Scylla Centos / Amazonlinux / Rockylinux / Oracle
-        run: ./server --scylla-version ${{ matrix.version }}.0 ${{ matrix.product }}
+  test_latest_in_version:
+    name: Test installation for latest in specific version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: sudo ./server --scylla-version 4.5
 
   test_latest:
     name: Test installation for latest version
