@@ -50,6 +50,13 @@ jobs:
       - uses: actions/checkout@v2
       - run: sudo ./server --scylla-version 4.5
 
+  test_nightly_master:
+    name: Test installation for nightly-master version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: sudo ./server --scylla-version nightly-master
+
   test_latest:
     name: Test installation for latest version
     runs-on: ubuntu-latest
