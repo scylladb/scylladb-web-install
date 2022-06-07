@@ -30,7 +30,7 @@
 # DEBUG OPTIONS:
 # [--scylla-repo-file-url <url>] URL to test installation from a custom URL.
 # DEBUG FLAGS:
-# [--debug-run] - use slim/minimal dockers when needed, and skip epel installation.
+# [--debug-run] - use slim/minimal dockers when needed
 # [--dry-run] -   Prints out commands instead of executing them.
 # [--verbose] -   Runs install commands with no quiet option, and more info.
 #
@@ -329,7 +329,7 @@ DEBUG OPTIONS:
   [--scylla-repo-file-url <url>] URL to test installation from a custom URL.
 
 DEBUG FLAGS:
-  [--debug-run] - use slim/minimal dockers when needed, and skip epel installation.
+  [--debug-run] - use slim/minimal dockers when needed.
   [--dry-run] -   Prints out commands instead of executing them.
   [--verbose] -   Runs install commands with no quiet option, and more info.
 
@@ -429,9 +429,6 @@ rhel_install() {
   fi
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Red Hat Enterprise Linux ..."
   set_rpm_install_tool
-  if [ $DEBUG_RUN -eq 0 ]; then
-    run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-  fi
   install_rpm
 }
 
@@ -453,9 +450,6 @@ ol_install() {
   fi
   echo_msg "Installing Scylla version $SCYLLA_VERSION for Oracle Linux ..."
   set_rpm_install_tool
-  if [ $DEBUG_RUN -eq 0 ]; then
-    run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-  fi
   install_rpm
 }
 
