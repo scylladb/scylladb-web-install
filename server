@@ -115,10 +115,13 @@ check_product() {
 }
 
 is_rc_version() {
-  if [[ $SCYLLA_VERSION == *rc* ]]; then
-    # replace the 2nd '.' with '~' for RC versions, ex. 4.6.rc0 -> 4.6~rc0
-    SCYLLA_VERSION=$(echo $SCYLLA_VERSION | sed 's/\(.*\)\.)*/\1~/')
-  fi
+    if [[ $SCYLLA_VERSION == *.rc* ]]; then
+      # replace the 2nd '.' with '~' for RC versions, ex. 4.6.rc0 -> 4.6~rc0
+      SCYLLA_VERSION=$(echo $SCYLLA_VERSION | sed 's/\(.*\)\.)*/\1~/')
+    elif [[ $SCYLLA_VERSION == *-rc* ]]; then
+      # replace '-' with '~' for RC versions, ex. 5.1.0-rc1 -> 5.1.0~rc1
+      SCYLLA_VERSION=$(echo $SCYLLA_VERSION | sed 's/-/~/')
+    fi
 }
 
 query_default_version() {
