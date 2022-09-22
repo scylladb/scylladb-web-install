@@ -134,6 +134,8 @@ packages_update() {
   if [[ "$NAME" == @(Ubuntu|Debian)* ]]; then
     run_cmd apt update
     run_cmd apt-get install $APT_FLAGS curl gnupg2
+  elif [[ "$NAME" == @(Amazon|Red Hat)* ]]; then
+    run_cmd yum install $YUM_QUIET_CMD_PARAM hostname iputils
   fi
 }
 
