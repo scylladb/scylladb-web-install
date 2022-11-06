@@ -496,7 +496,7 @@ deb_install() {
     echo_msg "Installing Scylla version $SCYLLA_VERSION for $NAME ..."
     run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
     run_cmd mkdir -p $APT_KEYS_DIR && gpg --homedir /tmp --no-default-keyring --keyring $APT_KEYS_DIR/scylladb.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
-    run_cmd apt update
+    run_cmd apt update $APT_FLAGS
     get_full_version
     run_cmd apt-get install $APT_FLAGS $SCYLLA_PRODUCT_VERSION
   fi
