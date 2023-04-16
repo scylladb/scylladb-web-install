@@ -12,20 +12,20 @@ jobs:
       fail-fast: false
       matrix:
         version:
-         - 4.6.0
          - 5.0.0
-         - 2021.1.0
+         - 5.1.0
          - 2022.1.0
+         - 2022.2.0
         include:
-          - version: 2021.1.0
-            product: --scylla-product scylla-enterprise
           - version: 2022.1.0
             product: --scylla-product scylla-enterprise
+          - version: 2022.2.0
+            product: --scylla-product scylla-enterprise
         container:
-          - ubuntu:18.04
           - ubuntu:20.04
+          - ubuntu:22.04
           - debian:10
-          - debian:9
+          - debian:11
           - rockylinux:8
           - centos:7
           - oraclelinux:8
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: sudo ./server --scylla-version 4.5
+      - run: sudo ./server --scylla-version 5.1
 
   test_nightly_master:
     name: Test installation for nightly-master version
