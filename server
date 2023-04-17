@@ -391,7 +391,7 @@ amzn_install() {
 
 check_centos_version() {
   case "$VERSION_ID" in
-    7*|8*)
+    7*|8*|9*)
       return 1
       ;;
     *)
