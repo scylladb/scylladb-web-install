@@ -44,3 +44,5 @@ We welcome public/internal contributions into this repository via pull requests.
 Please note that before we merge your pull request, you must validate your changes locally by
 running the script and in addition, it must pass all the internal [CI Tests](.github/workflows/test.yml).
 
+## License
+This project is distributed under the Apache 2.0 license. For more details, see the [LICENSE](LICENSE) file.
