@@ -146,7 +146,7 @@ set_gpg_key() {
       SCYLLA_GPG_KEY="5e08fbd8b5d6ec9c"
       ;;
     *)
-      SCYLLA_GPG_KEY="d0a112e067426ab2"
+      SCYLLA_GPG_KEY="d0a112e067426ab2 491c93b9de7496a7"
       ;;
   esac
 }
