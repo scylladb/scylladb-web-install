@@ -5,21 +5,10 @@ shopt -s extglob
 
 check_arch() {
   ARCH=$(uname -m)
-  SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
-  case $SCYLLA_RELEASE in
-    *202[1-9].* | 4.6* | *[5-9].* | master | enterprise)
-      if [[ "$ARCH" != @("x86_64"|"aarch64") ]]; then
-        echo "Architecture $ARCH is not supported for $SCYLLA_PRODUCT-$SCYLLA_VERSION, for supported os and arch please refer to https://docs.scylladb.com/getting-started/os-support/."
-        exit 1
-      fi
-      ;;
-    *)
-      if [[ "$ARCH" != "x86_64" ]]; then
-        echo "Architecture $ARCH is not supported for $SCYLLA_PRODUCT-$SCYLLA_VERSION, for supported os and arch please refer to https://docs.scylladb.com/getting-started/os-support/."
-        exit 1
-      fi
-      ;;
-  esac
+  if [[ "$ARCH" != @("x86_64"|"aarch64") ]]; then
+    echo "Your architecture '$ARCH' is not supported by $SCYLLA_PRODUCT, for supported OS and arch please refer to https://docs.scylladb.com/getting-started/os-support"
+    exit 1
+  fi
 }
 
 check_os() {
@@ -63,14 +52,23 @@ check_product() {
   esac
 }
 
-is_rc_version() {
-    if [[ $SCYLLA_VERSION == *.rc* ]]; then
-      # replace the 2nd '.' with '~' for RC versions, ex. 4.6.rc0 -> 4.6~rc0
-      SCYLLA_VERSION=$(echo $SCYLLA_VERSION | sed 's/\(.*\)\.)*/\1~/')
-    elif [[ $SCYLLA_VERSION == *-rc* ]]; then
-      # replace '-' with '~' for RC versions, ex. 5.1.0-rc1 -> 5.1.0~rc1
-      SCYLLA_VERSION=$(echo $SCYLLA_VERSION | sed 's/-/~/')
+is_supported_version() {
+  if [[ -n "$SCYLLA_VERSION" ]] && [[ $SCYLLA_VERSION != *"nightly"* ]]; then
+    if [[ "$SCYLLA_VERSION" != @(2022.[1-2]*|202[3-9].*|5.[2,4-9]*|[6-9].*) ]]; then
+      echo "The specified scylla-version $SCYLLA_VERSION has reached End of Life (EOL) and is no longer supported. For supported ScyllaDB versions please refer to https://docs.scylladb.com/getting-started/os-support"
+      exit 1
     fi
+  fi
+}
+
+is_rc_version() {
+  if [[ $SCYLLA_VERSION == *.rc* ]]; then
+    # replace the 2nd '.' with '~' for RC versions, ex. x.y.rc0 -> x.y~rc0
+    SCYLLA_VERSION=$(echo $SCYLLA_VERSION | sed 's/\(.*\)\.)*/\1~/')
+  elif [[ $SCYLLA_VERSION == *-rc* ]]; then
+    # replace '-' with '~' for RC versions, ex. x.y.0-rc1 -> x.y.0~rc1
+    SCYLLA_VERSION=$(echo $SCYLLA_VERSION | sed 's/-/~/')
+  fi
 }
 
 query_default_version() {
@@ -88,20 +86,8 @@ packages_update() {
   fi
 }
 
-set_gpg_key() {
-  SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | cut -d'-' -f 2)
-  case $SCYLLA_RELEASE in
-    *"2020.1"* | *"2021.1"* | *"4.4"* | *"4.5"* | *"4.6"*)
-      SCYLLA_GPG_KEY="5e08fbd8b5d6ec9c"
-      ;;
-    *)
-      SCYLLA_GPG_KEY="d0a112e067426ab2 491c93b9de7496a7"
-      ;;
-  esac
-}
-
 setup_install() {
-  set_gpg_key
+  SCYLLA_GPG_KEY="d0a112e067426ab2 491c93b9de7496a7"
   if [[ -n "$SCYLLA_REPO_FILE_URL" ]]; then
     SCYLLA_URL=${SCYLLA_REPO_FILE_URL}
     SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}"
@@ -142,15 +128,10 @@ setup_install() {
 }
 
 get_full_version() {
- PATCH_VERSION=$(echo $SCYLLA_VERSION | awk -v FS='.' '{print $3}')
- if [ -n "$PATCH_VERSION" ] && [ -z "$DEFAULT_SCYLLA_VERSION" ] || [[ $SCYLLA_VERSION == *rc* ]]; then
+  PATCH_VERSION=$(echo $SCYLLA_VERSION | awk -v FS='.' '{print $3}')
+  if [ -n "$PATCH_VERSION" ] && [ -z "$DEFAULT_SCYLLA_VERSION" ] || [[ $SCYLLA_VERSION == *rc* ]]; then
     FULL_SCYLLA_VERSION=$(apt-cache madison ${SCYLLA_PRODUCT} | grep -F $SCYLLA_VERSION | cut -d'|' -f 2 | sed 's/[[:space:]]//g' | head -n1)
-    if [[ $SCYLLA_PRODUCT =~ "enterprise" ]] && (( ${SCYLLA_VERSION%%.*} < 2022 )); then
-      #not including -node-exporter dependency for scylla-enterprise version
-      SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}{,-server,-jmx,-tools,-tools-core,-kernel-conf,-conf,-python3}=$FULL_SCYLLA_VERSION"
-    else
-      SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}{,-server,-jmx,-tools,-tools-core,-kernel-conf,-node-exporter,-conf,-python3}=$FULL_SCYLLA_VERSION"
-    fi
+    SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}{,-server,-jmx,-tools,-tools-core,-kernel-conf,-node-exporter,-conf,-python3}=$FULL_SCYLLA_VERSION"
   fi
 }
 
@@ -223,6 +204,7 @@ main() {
 
   check_product
   check_os
+  is_supported_version
 
   # os-release may be missing in container environment by default.
   if [ -f "/etc/os-release" ]; then
@@ -274,10 +256,10 @@ OPTIONS:
   [--scylla-version <version>] - Scylla version to install (default: $DEFAULT_SCYLLA_VERSION)
   Version examples:
     --scylla-version nightly-master will install master latest nightly version
-    --scylla-version nightly-4.5 will install 4.5 latest nightly version
+    --scylla-version nightly-5.4 will install 5.4 latest nightly version
     For enterprise product:
     --scylla-version nightly-enterprise will install enterprise latest nightly version
-    --scylla-version nightly-2021.1 will install 2021.1 latest nightly version
+    --scylla-version nightly-202x.1 will install 202x.1 latest nightly version
 
 DEBUG OPTIONS:
   [--scylla-repo-file-url <url>] URL to test installation from a custom URL.
@@ -311,7 +293,7 @@ install_rpm() {
   ret=0
   run_cmd curl -f -s -L -o /etc/yum.repos.d/scylla.repo "$SCYLLA_URL" || ret=$?
   if [ $ret -ne 0 ]; then
-    echo "Your OS is not supported by this installer because there is no package repository."
+    echo "There is no package repository for version '$SCYLLA_VERSION'. For ScyllaDB versions please refer to https://docs.scylladb.com/getting-started/os-support"
     exit 1
   fi
   run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM $SCYLLA_PRODUCT_VERSION
@@ -439,7 +421,7 @@ deb_install() {
     ret=0
     run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla.list "$SCYLLA_URL" || ret=$?
     if [ $ret -ne 0 ]; then
-      echo "Your OS is not supported by this installer because there is no package repository."
+      echo "There is no package repository for version '$SCYLLA_VERSION'. For ScyllaDB versions please refer to https://docs.scylladb.com/getting-started/os-support"
       exit 1
     fi
     echo_msg "Installing Scylla version $SCYLLA_VERSION for $NAME ..."
