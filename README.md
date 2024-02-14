@@ -30,9 +30,9 @@ Installing ScyllaDB Enterprise latest patch of version 2023.1:
 ```shell
 curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-product scylla-enterprise --scylla-version 2023.1
 ```
-Running an installation of nightly version 5.1 in dry-run:
+Running an installation of nightly version 5.4 in dry-run:
 ```shell
-curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version nightly-5.1 --dry-run
+curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version nightly-5.4 --dry-run
 ```
 
 ## Supported OSs by Platform and Version
