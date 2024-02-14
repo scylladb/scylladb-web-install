@@ -3,7 +3,7 @@
 installation Welcome to ScyllaDB Web Install repository!  
 
 ScyllaDB Web Install is a platform-agnostic script that allows an easy installation of [ScyllaDB](https://www.scylladb.com/) on different Operating System and architectures.  
-For more information, ScyllaDB Web Install user doc can be found [here](https://opensource.docs.scylladb.com/stable/getting-started/install-scylla/scylla-web-installer.html).
+For more information, ScyllaDB Web Install user doc can be found [here](https://opensource.docs.scylladb.com/stable/getting-started/installation-common/scylla-web-installer.html).
 
 ## Usage
 To install the latest stable open source version, run:
