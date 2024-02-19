@@ -130,7 +130,7 @@ setup_install() {
 get_full_version() {
   PATCH_VERSION=$(echo $SCYLLA_VERSION | awk -v FS='.' '{print $3}')
   if [ -n "$PATCH_VERSION" ] && [ -z "$DEFAULT_SCYLLA_VERSION" ] || [[ $SCYLLA_VERSION == *rc* ]]; then
-    FULL_SCYLLA_VERSION=$(apt-cache madison ${SCYLLA_PRODUCT} | grep -F $SCYLLA_VERSION | cut -d'|' -f 2 | sed 's/[[:space:]]//g' | head -n1)
+    FULL_SCYLLA_VERSION=$(apt-cache madison ${SCYLLA_PRODUCT} | grep -F -w $SCYLLA_VERSION | cut -d'|' -f 2 | sed 's/[[:space:]]//g' | head -n1)
     PACKAGES_LIST=',-server,-jmx,-tools,-tools-core,-kernel-conf,-node-exporter,-conf,-python3'
     if ([[ $SCYLLA_PRODUCT =~ "scylla" ]] && [[ ${SCYLLA_VERSION%.*} > "5.2" ]]) || ([[ $SCYLLA_PRODUCT =~ "enterprise" ]] && [[ ${SCYLLA_VERSION%%.*} > "2023" ]]); then
       PACKAGES_LIST="${PACKAGES_LIST},-cqlsh"
