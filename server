@@ -353,7 +353,7 @@ fedora_install() {
 
 check_rhel_version() {
   case "$VERSION_ID" in
-    7.?|8.?)
+    7.?|8.?*)
       return 1
       ;;
     *)
