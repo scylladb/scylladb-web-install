@@ -22,22 +22,23 @@ In `<version>`, specify `(x.y)` version to install the latest patch for this ver
 - `[--dry-run]` prints only the commands and the installation flow without actually installing it, useful for verification.
 
 #### Examples:
-Installing ScyllaDB Open Source version 5.2.10:
+Installing ScyllaDB Open Source version 5.4.8:
 ```shell
-curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version 5.2.10
+curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version 5.4.8
 ```
-Installing ScyllaDB Enterprise latest patch of version 2023.1:
+Installing ScyllaDB Enterprise latest patch of version 2024.1:
 ```shell
-curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-product scylla-enterprise --scylla-version 2023.1
+curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-product scylla-enterprise --scylla-version 2024.1
 ```
-Running an installation of nightly version 5.4 in dry-run:
+Running an installation of nightly version 6.0 in dry-run:
 ```shell
-curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version nightly-5.4 --dry-run
+curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version nightly-6.0 --dry-run
 ```
 
 ## Supported OSs by Platform and Version
-Ensure that your platform is supported by the ScyllaDB version you want to install.
-See [OS Support by Platform and Version](https://opensource.docs.scylladb.com/stable/getting-started/os-support.html).
+Ensure your platform is supported by ScyllaDB version you want to install.
+* For ScyllaDB Open Source - see [OS Support by Platform and Version for OSS](https://opensource.docs.scylladb.com/stable/getting-started/os-support.html).
+* For ScyllaDB Enterprise - see [OS Support by Platform and Version for Enterprise](https://enterprise.docs.scylladb.com/stable/getting-started/os-support.html).
 
 ## Contributing
 We welcome public/internal contributions into this repository via pull requests.  
