@@ -12,17 +12,11 @@ jobs:
       fail-fast: false
       matrix:
         version:
-         - 5.2.0
          - 5.4.0
-         - 2022.1.0
-         - 2022.2.0
+         - 6.0.0
          - 2023.1.0
          - 2024.1.0
         include:
-          - version: 2022.1.0
-            product: --scylla-product scylla-enterprise
-          - version: 2022.2.0
-            product: --scylla-product scylla-enterprise
           - version: 2023.1.0
             product: --scylla-product scylla-enterprise
           - version: 2024.1.0
@@ -30,34 +24,43 @@ jobs:
         container:
           - ubuntu:20.04
           - ubuntu:22.04
-          - debian:10
           - debian:11
           - rockylinux:8
-          - centos:7
+          - rockylinux:9
           - oraclelinux:8
-          - public.ecr.aws/amazonlinux/amazonlinux:2
     steps:
       - if: contains(matrix.container, 'ubuntu') || contains(matrix.container, 'debian')
         name: Install packages Ubuntu / Debian
         run: | 
-          apt-get update && apt-get install -y curl
+          apt-get update
 
-      - if: contains(matrix.container, 'centos') || contains(matrix.container, 'amazon') || contains(matrix.container, 'oracle') || contains(matrix.container, 'rockylinux')
-        name: Install packages For Centos / Amazonlinux / Rockylinux / Oracle
+      - if: contains(matrix.container, 'centos') || contains(matrix.container, 'oracle') || (contains(matrix.container, 'rockylinux:9') && matrix.version != '2023.1.0')
+        name: Install packages For Centos / Rockylinux / Oracle
         run: |
-          yum update -y && yum install -y curl tar gzip
+          yum update -y && yum install -y tar gzip
 
       - uses: actions/checkout@v2
 
       - name: Install Scylla first release
+        if: |
+          !(contains(matrix.container, 'rockylinux:9') && matrix.version == '2023.1.0')
         run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
+
+  test_amazon_linux:
+    name: Test installation for amazonlinux:2023 in version 6.0.0 only
+    runs-on: ubuntu-latest
+    container: amazonlinux:2023
+    steps:
+      - run: yum update -y && yum install -y tar gzip
+      - uses: actions/checkout@v2
+      - run: ./server --scylla-version 6.0.0
 
   test_latest_in_version:
     name: Test installation for latest in specific version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: sudo ./server --scylla-version 5.4
+      - run: sudo ./server --scylla-version 6.0
 
   test_nightly_master:
     name: Test installation for nightly-master version
