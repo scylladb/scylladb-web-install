@@ -93,7 +93,7 @@ packages_update() {
 }
 
 setup_install() {
-  SCYLLA_GPG_KEY="d0a112e067426ab2 491c93b9de7496a7"
+  SCYLLA_GPG_KEY="d0a112e067426ab2 491c93b9de7496a7 a43e06657bac99e3"
   if [[ -n "$SCYLLA_REPO_FILE_URL" ]]; then
     SCYLLA_URL=${SCYLLA_REPO_FILE_URL}
     SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}"
