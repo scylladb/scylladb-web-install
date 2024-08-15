@@ -14,6 +14,7 @@ jobs:
         version:
          - 5.4.0
          - 6.0.0
+         - 6.1.0
          - 2023.1.0
          - 2024.1.0
         include:
@@ -24,6 +25,7 @@ jobs:
         container:
           - ubuntu:20.04
           - ubuntu:22.04
+          - ubuntu:24.04
           - debian:11
           - rockylinux:8
           - rockylinux:9
@@ -43,24 +45,30 @@ jobs:
 
       - name: Install Scylla first release
         if: |
-          !(contains(matrix.container, 'rockylinux:9') && matrix.version == '2023.1.0')
+          !(contains(matrix.container, 'rockylinux:9') && matrix.version == '2023.1.0' || contains(matrix.container, 'ubuntu:24.04') && matrix.version == '2023.1.0')
         run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
 
   test_amazon_linux:
-    name: Test installation for amazonlinux:2023 in version 6.0.0 only
+    name: Test installation on amazonlinux:2023 with ${{ matrix.version }}
     runs-on: ubuntu-latest
     container: amazonlinux:2023
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 6.0.0
+          - 6.1.0
     steps:
       - run: yum update -y && yum install -y tar gzip
       - uses: actions/checkout@v2
-      - run: ./server --scylla-version 6.0.0
+      - run: ./server --scylla-version ${{ matrix.version }}
 
   test_latest_in_version:
     name: Test installation for latest in specific version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: sudo ./server --scylla-version 6.0
+      - run: sudo ./server --scylla-version 6.1
 
   test_nightly_master:
     name: Test installation for nightly-master version
