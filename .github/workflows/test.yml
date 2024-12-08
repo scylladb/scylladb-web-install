@@ -17,10 +17,13 @@ jobs:
          - 6.1.0
          - 2023.1.0
          - 2024.1.0
+         - 2024.2.0
         include:
           - version: 2023.1.0
             product: --scylla-product scylla-enterprise
           - version: 2024.1.0
+            product: --scylla-product scylla-enterprise
+          - version: 2024.2.0
             product: --scylla-product scylla-enterprise
         container:
           - ubuntu:20.04
