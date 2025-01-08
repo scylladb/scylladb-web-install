@@ -44,7 +44,7 @@ jobs:
         run: |
           yum update -y && yum install -y tar gzip
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install Scylla first release
         if: |
@@ -63,26 +63,26 @@ jobs:
           - 6.1.0
     steps:
       - run: yum update -y && yum install -y tar gzip
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - run: ./server --scylla-version ${{ matrix.version }}
 
   test_latest_in_version:
     name: Test installation for latest in specific version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - run: sudo ./server --scylla-version 6.1
 
   test_nightly_master:
     name: Test installation for nightly-master version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - run: sudo ./server --scylla-version nightly-master
 
   test_latest:
     name: Test installation for latest version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - run: sudo ./server
