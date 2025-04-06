@@ -12,15 +12,11 @@ jobs:
       fail-fast: false
       matrix:
         version:
-         - 5.4.0
-         - 6.0.0
-         - 6.1.0
-         - 2023.1.0
+         - 6.2.0
          - 2024.1.0
          - 2024.2.0
+         - 2025.1.0
         include:
-          - version: 2023.1.0
-            product: --scylla-product scylla-enterprise
           - version: 2024.1.0
             product: --scylla-product scylla-enterprise
           - version: 2024.2.0
@@ -33,45 +29,31 @@ jobs:
           - rockylinux:8
           - rockylinux:9
           - oraclelinux:8
+          - almalinux:9
+          - amazonlinux:2023
     steps:
       - if: contains(matrix.container, 'ubuntu') || contains(matrix.container, 'debian')
         name: Install packages Ubuntu / Debian
         run: | 
           apt-get update
 
-      - if: contains(matrix.container, 'centos') || contains(matrix.container, 'oracle') || (contains(matrix.container, 'rockylinux:9') && matrix.version != '2023.1.0')
-        name: Install packages For Centos / Rockylinux / Oracle
+      - if: contains(matrix.container, 'amazonlinux') || contains(matrix.container, 'oracle') || (contains(matrix.container, 'rockylinux'))
+        name: Install packages For AmazonLinux / Rockylinux / Oracle
         run: |
           yum update -y && yum install -y tar gzip
 
       - uses: actions/checkout@v4
 
-      - name: Install Scylla first release
-        if: |
-          !(contains(matrix.container, 'rockylinux:9') && matrix.version == '2023.1.0' || contains(matrix.container, 'ubuntu:24.04') && matrix.version == '2023.1.0')
+      - if: ${{ !(matrix.container == 'amazonlinux:2023' && matrix.version == '2024.1.0') }}
+        name: Install Scylla first release
         run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
-
-  test_amazon_linux:
-    name: Test installation on amazonlinux:2023 with ${{ matrix.version }}
-    runs-on: ubuntu-latest
-    container: amazonlinux:2023
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - 6.0.0
-          - 6.1.0
-    steps:
-      - run: yum update -y && yum install -y tar gzip
-      - uses: actions/checkout@v4
-      - run: ./server --scylla-version ${{ matrix.version }}
 
   test_latest_in_version:
     name: Test installation for latest in specific version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo ./server --scylla-version 6.1
+      - run: sudo ./server --scylla-version 2025.1
 
   test_nightly_master:
     name: Test installation for nightly-master version
