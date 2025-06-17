@@ -22,7 +22,6 @@ jobs:
           - version: 2024.2.0
             product: --scylla-product scylla-enterprise
         container:
-          - ubuntu:20.04
           - ubuntu:22.04
           - ubuntu:24.04
           - debian:11
