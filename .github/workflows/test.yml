@@ -7,19 +7,19 @@ jobs:
   test_supported_versions:
     name: Test on ${{matrix.container }} with ${{ matrix.version }}
     runs-on: ubuntu-latest
-    container: ${{ matrix.container }}
+    container:
+      image: ${{ matrix.container }}
+      options: --privileged
     strategy:
       fail-fast: false
       matrix:
         version:
-         - 6.2.0
          - 2024.1.0
-         - 2024.2.0
          - 2025.1.0
+         - 2025.2.0
+         - 2025.3.0
         include:
           - version: 2024.1.0
-            product: --scylla-product scylla-enterprise
-          - version: 2024.2.0
             product: --scylla-product scylla-enterprise
         container:
           - ubuntu:22.04
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo ./server --scylla-version 2025.1
+      - run: sudo ./server --scylla-version 2025.3
 
   test_nightly_master:
     name: Test installation for nightly-master version

@@ -137,10 +137,9 @@ get_full_version() {
   PATCH_VERSION=$(echo $SCYLLA_VERSION | awk -v FS='.' '{print $3}')
   if [ -n "$PATCH_VERSION" ] && [ -z "$DEFAULT_SCYLLA_VERSION" ] || [[ $SCYLLA_VERSION == *rc* ]]; then
     FULL_SCYLLA_VERSION=$(apt-cache madison ${SCYLLA_PRODUCT} | grep -F -w $SCYLLA_VERSION | cut -d'|' -f 2 | sed 's/[[:space:]]//g' | head -n1)
-    PACKAGES_LIST=',-server,-cqlsh,-tools,-tools-core,-kernel-conf,-node-exporter,-conf,-python3'
-    if ([[ $SCYLLA_PRODUCT =~ "enterprise" ]] && [[ ${SCYLLA_VERSION} =~ "2024.1" ]]); then
-      PACKAGES_LIST="${PACKAGES_LIST},-jmx"
-    fi
+    PACKAGES_LIST=',-server,-cqlsh,-kernel-conf,-node-exporter,-conf,-python3'
+    [[ "$SCYLLA_VERSION" == 2025.1* ]] && PACKAGES_LIST+=",-tools,-tools-core"
+    [[ "$SCYLLA_VERSION" == 2024.1* ]] && PACKAGES_LIST+=",-tools,-tools-core,-jmx"
     SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}{$PACKAGES_LIST}=$FULL_SCYLLA_VERSION"
   fi
 }
