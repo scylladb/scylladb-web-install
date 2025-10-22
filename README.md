@@ -18,6 +18,7 @@ At the end of the successful installation, the message `Scylla installation done
 In `<version>`, specify `(x.y)` version to install the latest patch for this version or `(x.y.z)` to install a specific patch release. In addition, there is an option to install the latest nightly version by specify `nightly-<version>`.
 - `[--scylla-product <scylla|scylla-enterprise>]` to install specific ScyllaDB product. Default is ScyllaDB OSS.
 - `[--scylla-repo-file-url <url>]` allow to download and install ScyllaDB product from a custom `scylla.list` or `scylla.repo` file.
+- `[--list-active-releases]` displays all currently supported ScyllaDB releases with accurate patch versions and LTS status. This option provides a real-time view of active releases in chronological order (latest to oldest) and automatically adapts to new releases and EOL transitions.
 - `[--verbose]` to get more information during the installation run.
 - `[--dry-run]` prints only the commands and the installation flow without actually installing it, useful for verification.
 
@@ -34,6 +35,18 @@ Running an installation of nightly version 6.0 in dry-run:
 ```shell
 curl -sSf get.scylladb.com/server | sudo bash -s -- --scylla-version nightly-6.0 --dry-run
 ```
+Viewing all currently supported ScyllaDB releases:
+```shell
+curl -sSf get.scylladb.com/server | bash -s -- --list-active-releases
+```
+
+The `--list-active-releases` command provides a dynamic view of all supported ScyllaDB releases:
+- Shows releases in chronological order (latest to oldest)
+- Displays accurate patch versions (e.g., 2025.1.9, 2024.1.21)
+- Marks LTS releases with `[LTS]` (every .1 release is LTS)
+- Indicates the current latest release with `- latest`
+- Automatically adapts to new releases and EOL transitions
+- Follows ScyllaDB's support policy (2 LTS releases supported simultaneously)
 
 ## Supported OSs by Platform and Version
 Ensure your platform is supported by ScyllaDB version you want to install.

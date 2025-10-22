@@ -78,9 +78,250 @@ is_rc_version() {
 }
 
 query_default_version() {
-  DEFAULT_SCYLLA_VERSION_RAW=$(curl -s https://repositories.scylladb.com/scylla/check_version?system=$VERSION_CHECK_SYSTEM)
+  DEFAULT_SCYLLA_VERSION_RAW=$(curl -s --retry 3 --max-time 5 "https://repositories.scylladb.com/scylla/check_version?system=$VERSION_CHECK_SYSTEM")
 
   DEFAULT_SCYLLA_VERSION=$(echo $DEFAULT_SCYLLA_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
+}
+
+get_latest_patch_for_series() {
+  local series=$1
+  
+  # Try the version-specific API endpoint first for accurate patch versions
+  local series_info=$(curl -s --retry 3 --max-time 5 "https://repositories.scylladb.com/scylla/check_version?version=$series" 2>/dev/null)
+
+  if [ $? -eq 0 ] && [ -n "$series_info" ]; then
+    local latest_patch=$(echo "$series_info" | sed -e "s/.*latest_patch_version\":\"\(.*\)\".*/\1/g")
+    
+    # Check if we got a valid patch version for our series
+    if [ -n "$latest_patch" ] && [ "$latest_patch" != "$series_info" ] && [[ "$latest_patch" == "$series"* ]]; then
+      echo "$latest_patch"
+      return
+    fi
+  fi
+  
+}
+
+# Discover all release series by probing the API
+discover_all_series() {
+  local current_version="$1"
+  local discovered_series=""
+  
+  # Parse current version to get a starting point
+  local current_year=$(echo "$current_version" | cut -d'.' -f1)
+  local current_minor=$(echo "$current_version" | cut -d'.' -f2)
+  
+  if [ $VERBOSE -eq 1 ]; then
+    echo "  Debug: Starting discovery from current version $current_version"
+    echo "  Debug: Current year: $current_year, current minor: $current_minor"
+  fi
+  
+  # Smart discovery strategy:
+  # 1. Start with current year and probe series around the current version
+  # 2. Check previous year for LTS (.1) releases
+  # 3. Validate each series exists before adding it
+  
+  # Check current year series (from .1 up to current minor + 1 for future releases)
+  local max_minor=$((current_minor + 1))
+  if [ $max_minor -lt 4 ]; then
+    max_minor=4  # Check at least up to .4 to catch future releases
+  fi
+  
+  for minor in $(seq 1 $max_minor); do
+    series="$current_year.$minor"
+    
+    if [ $VERBOSE -eq 1 ]; then
+      echo "  Debug: Testing current year series $series" >&2
+    fi
+    
+    # Quick test - try to get version info for this series
+    test_response=$(curl -s --retry 3 --max-time 5 "https://repositories.scylladb.com/scylla/check_version?version=$series" 2>/dev/null)
+    
+    # Check if we got a valid response
+    if echo "$test_response" | grep -q '"version"' && ! echo "$test_response" | grep -q '"error"'; then
+      extracted_version=$(echo "$test_response" | sed -e "s/.*version\":\"\([^\"]*\)\".*/\1/g")
+      
+      # Validate the extracted version looks like a proper version
+      if echo "$extracted_version" | grep -q "^$series\.[0-9]\+$"; then
+        discovered_series="$discovered_series $series"
+        if [ $VERBOSE -eq 1 ]; then
+          echo "  Debug: ✓ Found series $series (version: $extracted_version)" >&2
+        fi
+      fi
+    else
+      if [ $VERBOSE -eq 1 ]; then
+        echo "  Debug: ✗ Series $series not found or invalid" >&2
+      fi
+    fi
+  done
+  
+  # Check previous year LTS (.1 release) - ScyllaDB maintains 2 LTS at a time
+  prev_year=$((current_year - 1))
+  if [ $prev_year -ge 2024 ]; then  # ScyllaDB started new versioning in 2024
+    series="$prev_year.1"
+    
+    if [ $VERBOSE -eq 1 ]; then
+      echo "  Debug: Testing previous year LTS $series" >&2
+    fi
+
+    test_response=$(curl -s --retry 3 --max-time 5 "https://repositories.scylladb.com/scylla/check_version?version=$series" 2>/dev/null)
+
+    if echo "$test_response" | grep -q '"version"' && ! echo "$test_response" | grep -q '"error"'; then
+      extracted_version=$(echo "$test_response" | sed -e "s/.*version\":\"\([^\"]*\)\".*/\1/g")
+      
+      if echo "$extracted_version" | grep -q "^$series\.[0-9]\+$"; then
+        discovered_series="$discovered_series $series"
+        if [ $VERBOSE -eq 1 ]; then
+          echo "  Debug: ✓ Found previous year LTS $series (version: $extracted_version)" >&2
+        fi
+      fi
+    fi
+  fi
+  
+  echo "$discovered_series"
+}
+
+# Check if a series is actively supported (not EOL)
+is_series_supported() {
+  local series="$1"
+  local current_version="$2"
+  
+  # Parse versions
+  local series_year=$(echo "$series" | cut -d'.' -f1)
+  local series_minor=$(echo "$series" | cut -d'.' -f2)
+  local current_year=$(echo "$current_version" | cut -d'.' -f1)
+  local current_minor=$(echo "$current_version" | cut -d'.' -f2)
+  
+  # LTS series (.1 releases) - ScyllaDB supports 2 LTS releases at a time
+  if [ "$series_minor" = "1" ]; then
+    # Current year LTS is always supported
+    if [ "$series_year" = "$current_year" ]; then
+      return 0
+    fi
+    
+    # Previous year LTS is supported if current year has an LTS
+    if [ "$series_year" = "$((current_year - 1))" ] && [ "$current_minor" -ge 1 ]; then
+      return 0
+    fi
+    
+    # No longer supported if it's 2+ years old
+    return 1
+  fi
+  
+  # Non-LTS series - only current year series are supported
+  if [ "$series_year" = "$current_year" ]; then
+    return 0
+  fi
+  
+  # Non-LTS from previous years are EOL
+  return 1
+}
+
+list_active_releases() {
+  echo "ScyllaDB Active Releases (Latest to Oldest):"
+  echo "============================================="
+  
+  # Check if curl is available
+  if ! command -v curl &> /dev/null; then
+    echo "Error: curl is not installed or not available in PATH"
+    echo "Please install curl to use this feature"
+    exit 1
+  fi
+  
+  system="scylla"
+  
+  # Get current version to understand what's latest
+  if [ $VERBOSE -eq 1 ]; then
+    echo "  Debug: Querying https://repositories.scylladb.com/scylla/check_version?system=$system"
+  fi
+  
+  current_version_raw=$(curl -s --retry 3 --max-time 5 "https://repositories.scylladb.com/scylla/check_version?system=$system" 2>/dev/null)
+  curl_exit_code=$?
+  
+  if [ $VERBOSE -eq 1 ]; then
+    echo "  Debug: curl exit code: $curl_exit_code"
+    echo "  Debug: raw response: $current_version_raw"
+  fi
+  
+  current_version=$(echo "$current_version_raw" | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
+  
+  if [ $VERBOSE -eq 1 ]; then
+    echo "  Debug: extracted version: $current_version"
+  fi
+  
+  if [ $curl_exit_code -ne 0 ]; then
+    echo "  Network error: Failed to connect to ScyllaDB repository (curl exit code: $curl_exit_code)"
+    echo "  Please check your internet connection and try again"
+    return
+  elif [ -z "$current_version" ] || [ "$current_version" = "" ] || [ "$current_version" = "$current_version_raw" ]; then
+    echo "  Unable to parse version information"
+    echo "  Raw response: $current_version_raw"
+    echo "  Please try again later or check if the API format has changed"
+    return
+  fi
+  
+  # Dynamically discover all available series
+  if [ $VERBOSE -eq 1 ]; then
+    echo "  Debug: Starting series discovery..." >&2
+  fi
+  
+  all_series=$(discover_all_series "$current_version")
+  
+  if [ $VERBOSE -eq 1 ]; then
+    echo "  Debug: Discovered series: $all_series" >&2
+  fi
+  
+  # Filter to only supported/active series
+  active_series=""
+  for series in $all_series; do
+    if is_series_supported "$series" "$current_version"; then
+      active_series="$active_series $series"
+      if [ $VERBOSE -eq 1 ]; then
+        echo "  Debug: $series is supported" >&2
+      fi
+    else
+      if [ $VERBOSE -eq 1 ]; then
+        echo "  Debug: $series is EOL" >&2
+      fi
+    fi
+  done
+  
+  # Sort active series in descending order (latest to oldest)
+  active_series=$(echo "$active_series" | tr ' ' '\n' | sort -V -r | uniq | tr '\n' ' ')
+  
+  if [ -z "$active_series" ]; then
+    echo "  No active releases found. This might indicate an API issue."
+    return
+  fi
+  
+  # Parse current version info for latest marker
+  current_year=$(echo "$current_version" | cut -d'.' -f1)
+  current_minor=$(echo "$current_version" | cut -d'.' -f2)
+  current_series="$current_year.$current_minor"
+  
+  # Display each active series with latest patch version
+  for series in $active_series; do
+    series=$(echo "$series" | xargs) # trim whitespace
+    if [ -n "$series" ]; then
+      latest_patch=$(get_latest_patch_for_series "$series")
+      
+      # Determine if this is LTS
+      series_minor=$(echo "$series" | cut -d'.' -f2)
+      if [ "$series_minor" = "1" ]; then
+        lts_marker=" [LTS]"
+      else
+        lts_marker=""
+      fi
+      
+      # Check if this is the current latest series
+      if [ "$series" = "$current_series" ]; then
+        support_status=" - latest"
+      else
+        support_status=""
+      fi
+      
+      echo "  $series: $latest_patch$lts_marker$support_status"
+    fi
+  done
 }
 
 packages_update() {
@@ -174,6 +415,10 @@ main() {
         SCYLLA_VERSION="$2"
         shift 2
         ;;
+      "--list-active-releases")
+        list_active_releases
+        exit 0
+        ;;
       "--dry-run")
         DRY_RUN=1
         shift 1
@@ -260,6 +505,7 @@ USAGE:
 
 FLAGS:
     -h, --help              Prints help information
+    --list-active-releases  Lists all active ScyllaDB releases with LTS status
 
 OPTIONS:
   [--scylla-product scylla|scylla-enterprise] - Scylla product to install (default: $DEFAULT_SCYLLA_PRODUCT)
