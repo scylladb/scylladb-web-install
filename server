@@ -402,7 +402,7 @@ ol_install() {
 check_debian_ubuntu_version() {
   if [[ "$ID" == "debian" ]]; then
     case "$VERSION_ID" in
-      "9"|"10"|"11")
+      "9"|"10"|"11"|"12")
         return 0
         ;;
       *)
