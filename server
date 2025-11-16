@@ -648,7 +648,7 @@ ol_install() {
 check_debian_ubuntu_version() {
   if [[ "$ID" == "debian" ]]; then
     case "$VERSION_ID" in
-      "9"|"10"|"11"|"12")
+      "9"|"10"|"11"|"12"|"13")
         return 0
         ;;
       *)
@@ -681,8 +681,9 @@ deb_install() {
       exit 1
     fi
     echo_msg "Installing Scylla version $SCYLLA_VERSION for $NAME ..."
-    run_cmd apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
-    run_cmd mkdir -p $APT_KEYS_DIR && gpg --homedir /tmp --no-default-keyring --keyring $APT_KEYS_DIR/scylladb.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
+    run_cmd mkdir -p $APT_KEYS_DIR
+    run_cmd gpg --homedir /tmp --no-default-keyring --keyring /tmp/temp.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
+    run_cmd gpg --homedir /tmp --no-default-keyring --keyring /tmp/temp.gpg --export --armor $SCYLLA_GPG_KEY | gpg --dearmor > $APT_KEYS_DIR/scylladb.gpg    
     run_cmd apt update $APT_FLAGS
     get_full_version
     run_cmd apt-get install $APT_FLAGS $SCYLLA_PRODUCT_VERSION
