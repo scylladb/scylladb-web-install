@@ -401,6 +401,8 @@ main() {
 
   USAGE=0
 
+  USE_TARBALL=0
+
   DEFAULT_SCYLLA_PRODUCT="scylla"
   SCYLLA_PRODUCT="$DEFAULT_SCYLLA_PRODUCT"
 
@@ -439,6 +441,10 @@ main() {
         ;;
       "--verbose")
         VERBOSE=1
+        shift 1
+        ;;
+      "--tarball")
+        USE_TARBALL=1
         shift 1
         ;;
       *)
@@ -485,18 +491,23 @@ main() {
   fi
 
   check_arch
-  setup_install $ID
 
-  case "$ID" in
-    "amzn") amzn_install ;;
-    "centos"|"rocky") centos_install ;;
-    "debian"|"ubuntu") deb_install ;;
-    "fedora") fedora_install ;;
-    "almalinux") centos_install ;;
-    "ol") ol_install ;;
-    "rhel") rhel_install ;;
-    *) echo "Operating system '$ID' is not supported by this installer." && exit 1
-  esac
+  if [ $USE_TARBALL -eq 1 ]; then
+    tarball_install
+  else
+    setup_install $ID
+    case "$ID" in
+      "amzn") amzn_install ;;
+      "centos"|"rocky") centos_install ;;
+      "debian"|"ubuntu") deb_install ;;
+      "fedora") fedora_install ;;
+      "almalinux") centos_install ;;
+      "ol") ol_install ;;
+      "rhel") rhel_install ;;
+      *) echo "Operating system '$ID' is not supported by the package installer. Falling back to tarball installation..."
+         tarball_install ;;
+    esac
+  fi
 
   echo_msg "Scylla installation done!"
 }
@@ -512,6 +523,7 @@ USAGE:
 FLAGS:
     -h, --help              Prints help information
     --list-active-releases  Lists all active ScyllaDB releases with LTS status
+    --tarball               Install using tarball instead of packages
 
 OPTIONS:
   [--scylla-product scylla|scylla-enterprise] - Scylla product to install (default: $DEFAULT_SCYLLA_PRODUCT)
@@ -694,6 +706,66 @@ deb_install() {
     get_full_version
     run_cmd apt-get install $APT_FLAGS $SCYLLA_PRODUCT_VERSION
   fi
+}
+
+tarball_install() {
+  SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+\.[[:digit:]]\+\).*/\1/g")
+
+  # Determine architecture suffix
+  if [ "$ARCH" = "aarch64" ]; then
+    ARCH_SUFFIX="aarch64"
+  else
+    ARCH_SUFFIX="x86_64"
+  fi
+
+  # Discover the full build identifier from the S3 bucket listing
+  S3_PREFIX="downloads/scylla/relocatable/scylladb-${SCYLLA_RELEASE}"
+  BUILD_FILE=$(curl -s --retry 3 --max-time 5 "https://s3.amazonaws.com/downloads.scylladb.com?prefix=${S3_PREFIX}/00-Build-${SCYLLA_VERSION}-&delimiter=/" \
+    | grep -o "<Key>[^<]*</Key>" | grep -v '~rc' | head -1 | sed 's/<Key>//;s/<\/Key>//')
+
+  if [ -z "$BUILD_FILE" ]; then
+    echo "Failed to find build info for version $SCYLLA_VERSION"
+    exit 1
+  fi
+
+  # Extract build suffix: 00-Build-<version>-<suffix>.txt -> <suffix> (without .txt)
+  BUILD_SUFFIX=$(echo "$BUILD_FILE" | sed "s|.*00-Build-${SCYLLA_VERSION}-||;s|\.txt$||")
+
+  TARBALL_URL="https://downloads.scylladb.com/${S3_PREFIX}/scylla-unified-${SCYLLA_VERSION}-${BUILD_SUFFIX}.${ARCH_SUFFIX}.tar.gz"
+
+  echo_msg "Installing Scylla version $SCYLLA_VERSION via tarball (unified installer)..."
+  echo_msg "Downloading from: $TARBALL_URL"
+
+  INSTALL_DIR=$(mktemp -d)
+
+  ret=0
+  curl -f -s -L "$TARBALL_URL" -o "$INSTALL_DIR/scylla-unified.tar.gz" || ret=$?
+  if [ $ret -ne 0 ]; then
+    echo "Failed to download Scylla tarball. Please check the version and try again."
+    echo "URL attempted: $TARBALL_URL"
+    rm -rf "$INSTALL_DIR"
+    exit 1
+  fi
+
+  tar xzf "$INSTALL_DIR/scylla-unified.tar.gz" -C "$INSTALL_DIR"
+
+  # Find and run install.sh from the extracted tarball
+  INSTALL_SCRIPT=$(find "$INSTALL_DIR" -maxdepth 2 -name "install.sh" -type f | head -1)
+  if [ -z "$INSTALL_SCRIPT" ]; then
+    echo "Could not find install.sh in extracted tarball."
+    rm -rf "$INSTALL_DIR"
+    exit 1
+  fi
+
+  echo_msg "Running unified installer..."
+  if [ "$(id -u)" -ne 0 ]; then
+    run_cmd "$INSTALL_SCRIPT --nonroot"
+  else
+    run_cmd "$INSTALL_SCRIPT"
+  fi
+
+  rm -rf "$INSTALL_DIR"
+  echo_msg "Run 'scylla_setup' to configure ScyllaDB before starting."
 }
 
 main "$@"

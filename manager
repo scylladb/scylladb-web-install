@@ -1,0 +1,236 @@
+#!/bin/bash
+
+set -euo pipefail
+shopt -s extglob
+
+check_arch() {
+  ARCH=$(uname -m)
+  if [[ "$ARCH" != @("x86_64"|"aarch64") ]]; then
+    echo "Your architecture '$ARCH' is not supported by Scylla Manager, for supported OS and arch please refer to https://docs.scylladb.com/getting-started/os-support"
+    exit 1
+  fi
+}
+
+check_os() {
+  OS=$(uname -s)
+
+  case "$OS" in
+    Linux)   ;;
+    *)        echo -e "Your operating system $OS is not supported by this installer.\n\nPlease refer to the Scylla Manager documentation:\n\nhttps://manager.docs.scylladb.com/" && exit 1 ;;
+  esac
+}
+
+echo_msg() {
+  if [ $DRY_RUN -eq 0 ]; then
+    echo $*
+  fi
+}
+
+run_cmd() {
+  CMD=("$@")
+  if [ $DRY_RUN -eq 0 ]; then
+   "${CMD[@]}"
+  else
+    echo "${CMD[@]}"
+  fi
+}
+
+query_default_version() {
+  DEFAULT_MANAGER_VERSION_RAW=$(curl -s --retry 3 --max-time 5 "https://repositories.scylladb.com/scylla/check_version?system=manager")
+
+  DEFAULT_MANAGER_VERSION=$(echo $DEFAULT_MANAGER_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
+}
+
+packages_update() {
+  if [[ "$ID" == @(ubuntu|debian) ]]; then
+    run_cmd apt update
+    run_cmd apt-get install $APT_FLAGS curl gnupg2
+  elif [[ "$ID" == @(amzn|rhel|centos|rocky|fedora|almalinux|ol) ]]; then
+    run_cmd yum install $YUM_QUIET_CMD_PARAM hostname
+  fi
+}
+
+setup_manager_install() {
+  SCYLLA_GPG_KEY="d0a112e067426ab2 491c93b9de7496a7 a43e06657bac99e3 c503c686b007f39e"
+  if [[ -n "$MANAGER_REPO_FILE_URL" ]]; then
+    MANAGER_URL=${MANAGER_REPO_FILE_URL}
+    MANAGER_PRODUCT_VERSION="scylla-manager"
+  else
+    MANAGER_RELEASE=$(echo $MANAGER_VERSION | sed -e "s/\([[:digit:]]\+.[[:digit:]]\+\).*/\1/g")
+    if [ $1 == "debian" ] || [ $1 == "ubuntu" ]; then
+      MANAGER_URL="https://downloads.scylladb.com/deb/ubuntu/scylladb-manager-$MANAGER_RELEASE.list"
+      MANAGER_PRODUCT_VERSION="scylla-manager"
+    else
+      set_rpm_install_tool
+      MANAGER_URL="https://downloads.scylladb.com/rpm/centos/scylladb-manager-$MANAGER_RELEASE.repo"
+      MANAGER_PRODUCT_VERSION="scylla-manager"
+    fi
+  fi
+}
+
+main() {
+
+  DRY_RUN=0
+  MANAGER_REPO_FILE_URL=""
+
+  DEBUG_RUN=0
+  VERBOSE=0
+
+  USAGE=0
+
+  MANAGER_VERSION=""
+  DEFAULT_MANAGER_VERSION=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      "-h" | "--help")
+        USAGE=1
+        shift 1
+        ;;
+      "--manager-version")
+        MANAGER_VERSION="$2"
+        shift 2
+        ;;
+      "--dry-run")
+        DRY_RUN=1
+        shift 1
+        ;;
+      "--debug-run")
+        DEBUG_RUN=1
+        shift 1
+        ;;
+      "--manager-repo-file-url")
+        MANAGER_REPO_FILE_URL="$2"
+        shift 2
+        ;;
+      "--verbose")
+        VERBOSE=1
+        shift 1
+        ;;
+      *)
+        USAGE=1
+        shift 1
+        ;;
+    esac
+  done
+
+  if [ $USAGE -eq 1 ]; then
+    usage
+    exit 1
+  fi
+
+  RETRY_OPTION="-o Acquire::Retries=3"
+  if [ $VERBOSE -eq 1 ]; then
+    YUM_QUIET_CMD_PARAM="--assumeyes"
+    APT_FLAGS="--assume-yes $RETRY_OPTION"
+  else
+    YUM_QUIET_CMD_PARAM="--assumeyes --quiet"
+    APT_FLAGS="-qq $RETRY_OPTION"
+  fi
+
+  check_os
+
+  # os-release may be missing in container environment by default.
+  if [ -f "/etc/os-release" ]; then
+      . /etc/os-release
+  elif [ -f "/etc/arch-release" ]; then
+      export ID=arch
+  else
+      echo "/etc/os-release missing."
+      exit 1
+  fi
+
+  packages_update
+
+  if [ -z "$MANAGER_VERSION" ] && [ -z "$MANAGER_REPO_FILE_URL" ]; then
+    query_default_version
+    MANAGER_VERSION="$DEFAULT_MANAGER_VERSION"
+  fi
+
+  check_arch
+  setup_manager_install $ID
+
+  case "$ID" in
+    "amzn"|"centos"|"rocky"|"fedora"|"almalinux"|"ol"|"rhel")
+      echo_msg "Installing Scylla Manager version $MANAGER_VERSION for $NAME ..."
+      set_rpm_install_tool
+      install_rpm
+      ;;
+    "debian"|"ubuntu") deb_install ;;
+    *) echo "Operating system '$ID' is not supported by this installer." && exit 1
+  esac
+
+  echo_msg "Scylla Manager installation done!"
+}
+
+usage() {
+  cat 1>&2 <<EOF
+scylla-manager-get
+The platform agnostic installer for Scylla Manager.
+
+USAGE:
+    scylla-manager-get [FLAGS] [OPTIONS]
+
+FLAGS:
+    -h, --help              Prints help information
+
+OPTIONS:
+  [--manager-version <version>] - Scylla Manager version to install (default: latest)
+
+DEBUG OPTIONS:
+  [--manager-repo-file-url <url>] URL to test installation from a custom URL.
+
+DEBUG FLAGS:
+  [--debug-run] - use slim/minimal dockers when needed.
+  [--dry-run] -   Prints out commands instead of executing them.
+  [--verbose] -   Runs install commands with no quiet option, and more info.
+
+EOF
+}
+
+require_cmd() {
+  CMD=$1
+  if ! command -v "$CMD" &> /dev/null
+  then
+    echo "Please make sure '$CMD' is installed on this machine."
+    exit
+  fi
+}
+
+set_rpm_install_tool() {
+  RPM_INSTALL_TOOL="yum"
+  if [ $DEBUG_RUN -eq 1 ]; then
+    RPM_INSTALL_TOOL="microdnf"
+  fi
+  require_cmd $RPM_INSTALL_TOOL
+}
+
+install_rpm() {
+  ret=0
+  run_cmd curl -f -s -L -o /etc/yum.repos.d/scylla-manager.repo "$MANAGER_URL" || ret=$?
+  if [ $ret -ne 0 ]; then
+    echo "Failed to download Scylla Manager repository file. Please check the version and try again."
+    exit 1
+  fi
+  run_cmd $RPM_INSTALL_TOOL install $YUM_QUIET_CMD_PARAM ${MANAGER_PRODUCT_VERSION}-server ${MANAGER_PRODUCT_VERSION}-client
+}
+
+deb_install() {
+  export DEBIAN_FRONTEND=noninteractive
+  APT_KEYS_DIR='/etc/apt/keyrings'
+
+  ret=0
+  run_cmd curl -f -s -L -o /etc/apt/sources.list.d/scylla-manager.list "$MANAGER_URL" || ret=$?
+  if [ $ret -ne 0 ]; then
+    echo "Failed to download Scylla Manager repository file. Please check the version and try again."
+    exit 1
+  fi
+  echo_msg "Installing Scylla Manager version $MANAGER_VERSION for $NAME ..."
+  run_cmd mkdir -p $APT_KEYS_DIR
+  run_cmd gpg --homedir /tmp --no-default-keyring --keyring /tmp/temp.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys $SCYLLA_GPG_KEY
+  run_cmd gpg --homedir /tmp --no-default-keyring --keyring /tmp/temp.gpg --export --armor $SCYLLA_GPG_KEY | gpg --dearmor > $APT_KEYS_DIR/scylladb.gpg
+  run_cmd apt update $APT_FLAGS
+  run_cmd apt-get install $APT_FLAGS ${MANAGER_PRODUCT_VERSION}-server ${MANAGER_PRODUCT_VERSION}-client
+}
+
+main "$@"
