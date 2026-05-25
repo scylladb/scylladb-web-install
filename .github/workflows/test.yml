@@ -14,20 +14,14 @@ jobs:
       fail-fast: false
       matrix:
         version:
-         - 2024.1.0
          - 2025.1.0
-         - 2025.2.0
-         - 2025.3.0
-        include:
-          - version: 2024.1.0
-            product: --scylla-product scylla-enterprise
+         - 2025.4.0
+         - 2026.1.0
         container:
           - ubuntu:22.04
           - ubuntu:24.04
-          - debian:11
           - debian:12
           - debian:13
-          - rockylinux:8
           - rockylinux:9
           - oraclelinux:8
           - almalinux:9
@@ -38,14 +32,14 @@ jobs:
         run: | 
           apt-get update
 
-      - if: contains(matrix.container, 'amazonlinux') || contains(matrix.container, 'oracle') || (contains(matrix.container, 'rockylinux'))
-        name: Install packages For AmazonLinux / Rockylinux / Oracle
+      - if: contains(matrix.container, 'amazonlinux') || contains(matrix.container, 'oracle') || contains(matrix.container, 'rockylinux') || contains(matrix.container, 'almalinux')
+        name: Install packages For AmazonLinux / Rockylinux / Oracle / AlmaLinux
         run: |
-          yum update -y && yum install -y tar gzip
+          yum install -y tar gzip
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - if: ${{ !((matrix.container == 'amazonlinux:2023' && matrix.version == '2024.1.0') || ((matrix.container == 'debian:12' || matrix.container == 'debian:13') && (matrix.version == '2024.1.0' || matrix.version == '2025.1.0'))) }}
+      - if: ${{ !((matrix.container == 'debian:12' || matrix.container == 'debian:13') && matrix.version == '2025.1.0') }}
         name: Install Scylla first release
         run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
 
@@ -53,26 +47,26 @@ jobs:
     name: Test installation for latest in specific version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: sudo ./server --scylla-version 2025.3
+      - uses: actions/checkout@v5
+      - run: sudo ./server --scylla-version 2026.1
 
   test_nightly_master:
     name: Test installation for nightly-master version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: sudo ./server --scylla-version nightly-master
 
   test_latest:
     name: Test installation for latest version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: sudo ./server
   
   test_active_releases:
     name: Test listing active releases
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: sudo ./server --list-active-releases

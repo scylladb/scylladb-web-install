@@ -54,7 +54,7 @@ check_product() {
 
 is_supported_version() {
   if [[ -n "$SCYLLA_VERSION" ]] && [[ $SCYLLA_VERSION != *"nightly"* ]]; then
-    if [[ "$SCYLLA_VERSION" != @(202[3-9].*|5.[4-9]*|[6-9].*) ]]; then
+    if [[ "$SCYLLA_VERSION" != @(202[5-9].[1-9]*|20[3-9][0-9].*) ]]; then
       supported_versions_message
       exit 1
     fi
@@ -378,9 +378,9 @@ get_full_version() {
   PATCH_VERSION=$(echo $SCYLLA_VERSION | awk -v FS='.' '{print $3}')
   if [ -n "$PATCH_VERSION" ] && [ -z "$DEFAULT_SCYLLA_VERSION" ] || [[ $SCYLLA_VERSION == *rc* ]]; then
     FULL_SCYLLA_VERSION=$(apt-cache madison ${SCYLLA_PRODUCT} | grep -F -w $SCYLLA_VERSION | cut -d'|' -f 2 | sed 's/[[:space:]]//g' | head -n1)
-    PACKAGES_LIST=',-server,-cqlsh,-kernel-conf,-node-exporter,-conf,-python3'
-    [[ "$SCYLLA_VERSION" == 2025.1* ]] && PACKAGES_LIST+=",-tools,-tools-core"
-    [[ "$SCYLLA_VERSION" == 2024.1* ]] && PACKAGES_LIST+=",-tools,-tools-core,-jmx"
+    PACKAGES_LIST=',-server,-cqlsh,-kernel-conf,-conf,-python3'
+    [[ "$SCYLLA_VERSION" == 2026.1* || "$SCYLLA_VERSION" == 2025.4* ]] && PACKAGES_LIST+=",-node-exporter"
+    [[ "$SCYLLA_VERSION" == 2025.1* ]] && PACKAGES_LIST+=",-node-exporter,-tools,-tools-core"
     SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}{$PACKAGES_LIST}=$FULL_SCYLLA_VERSION"
   fi
 }
