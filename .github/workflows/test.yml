@@ -64,6 +64,13 @@ jobs:
       - uses: actions/checkout@v5
       - run: sudo ./server
   
+  test_nightly_master_debug:
+    name: Test installation for nightly-master debug repo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo ./server --scylla-version nightly-master --scylla-repo-file-url https://downloads.scylladb.com/unstable/scylla/master/deb/unified/latest/scylladb-debug-master/scylla-debug.list
+
   test_active_releases:
     name: Test listing active releases
     runs-on: ubuntu-latest

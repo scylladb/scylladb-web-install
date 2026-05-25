@@ -382,6 +382,12 @@ get_full_version() {
     [[ "$SCYLLA_VERSION" == 2026.1* || "$SCYLLA_VERSION" == 2025.4* ]] && PACKAGES_LIST+=",-node-exporter"
     [[ "$SCYLLA_VERSION" == 2025.1* ]] && PACKAGES_LIST+=",-node-exporter,-tools,-tools-core"
     SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}{$PACKAGES_LIST}=$FULL_SCYLLA_VERSION"
+  elif [[ $SCYLLA_VERSION == *"nightly"* ]] || [[ -n "$SCYLLA_REPO_FILE_URL" ]]; then
+    # For debug repos, install sub-packages directly excluding node-exporter
+    # which is not included in debug repo builds
+    if [[ "$SCYLLA_REPO_FILE_URL" == *"debug"* ]]; then
+      SCYLLA_PRODUCT_VERSION="${SCYLLA_PRODUCT}-server ${SCYLLA_PRODUCT}-cqlsh ${SCYLLA_PRODUCT}-kernel-conf ${SCYLLA_PRODUCT}-conf ${SCYLLA_PRODUCT}-python3"
+    fi
   fi
 }
 
