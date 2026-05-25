@@ -76,3 +76,74 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo ./server --list-active-releases
+
+  test_tarball_install:
+    name: Test tarball installation on ${{ matrix.container }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.container }}
+      options: --privileged
+    strategy:
+      fail-fast: false
+      matrix:
+        container:
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - rockylinux:9
+    steps:
+      - if: contains(matrix.container, 'ubuntu')
+        name: Install prerequisites (Ubuntu)
+        run: apt-get update && apt-get install -y curl tar gzip findutils
+
+      - if: contains(matrix.container, 'rockylinux')
+        name: Install prerequisites (Rocky)
+        run: dnf install -y --allowerasing tar gzip findutils curl
+
+      - uses: actions/checkout@v4
+
+      - name: Test Scylla tarball download and extract
+        run: |
+          # Run only the download+extract portion; install.sh requires systemd which isn't available in containers
+          export SCYLLA_VERSION=2025.3.0
+          export ARCH=$(uname -m)
+          SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+\.[[:digit:]]\+\).*/\1/g")
+          if [ "$ARCH" = "aarch64" ]; then ARCH_SUFFIX="aarch64"; else ARCH_SUFFIX="x86_64"; fi
+          S3_PREFIX="downloads/scylla/relocatable/scylladb-${SCYLLA_RELEASE}"
+          BUILD_FILE=$(curl -s "https://s3.amazonaws.com/downloads.scylladb.com?prefix=${S3_PREFIX}/00-Build-${SCYLLA_VERSION}-&delimiter=/" \
+            | grep -o "<Key>[^<]*</Key>" | grep -v '~rc' | head -1 | sed 's/<Key>//;s/<\/Key>//')
+          BUILD_SUFFIX=$(echo "$BUILD_FILE" | sed "s|.*00-Build-${SCYLLA_VERSION}-||;s|\.txt$||")
+          TARBALL_URL="https://downloads.scylladb.com/${S3_PREFIX}/scylla-unified-${SCYLLA_VERSION}-${BUILD_SUFFIX}.${ARCH_SUFFIX}.tar.gz"
+          echo "Downloading: $TARBALL_URL"
+          INSTALL_DIR=$(mktemp -d)
+          curl -f -s -L "$TARBALL_URL" -o "$INSTALL_DIR/scylla-unified.tar.gz"
+          tar xzf "$INSTALL_DIR/scylla-unified.tar.gz" -C "$INSTALL_DIR"
+          INSTALL_SCRIPT=$(find "$INSTALL_DIR" -maxdepth 2 -name "install.sh" -type f | head -1)
+          test -n "$INSTALL_SCRIPT" && echo "SUCCESS: install.sh found at $INSTALL_SCRIPT"
+          rm -rf "$INSTALL_DIR"
+
+  test_manager_install:
+    name: Test manager installation on ${{ matrix.container }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.container }}
+      options: --privileged
+    strategy:
+      fail-fast: false
+      matrix:
+        container:
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - rockylinux:9
+    steps:
+      - if: contains(matrix.container, 'ubuntu')
+        name: Install prerequisites (Ubuntu)
+        run: apt-get update && apt-get install -y curl gnupg2
+
+      - if: contains(matrix.container, 'rockylinux')
+        name: Install prerequisites (Rocky)
+        run: dnf install -y --allowerasing curl hostname
+
+      - uses: actions/checkout@v4
+
+      - name: Install Scylla Manager
+        run: ./manager --manager-version 3.10.0
