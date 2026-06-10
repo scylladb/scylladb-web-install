@@ -37,7 +37,7 @@ jobs:
         run: |
           yum install -y tar gzip
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - if: ${{ !((matrix.container == 'debian:12' || matrix.container == 'debian:13') && matrix.version == '2025.1.0') }}
         name: Install Scylla first release
@@ -47,35 +47,35 @@ jobs:
     name: Test installation for latest in specific version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - run: sudo ./server --scylla-version 2026.1
 
   test_nightly_master:
     name: Test installation for nightly-master version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - run: sudo ./server --scylla-version nightly-master
 
   test_latest:
     name: Test installation for latest version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - run: sudo ./server
   
   test_nightly_master_debug:
     name: Test installation for nightly-master debug repo
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - run: sudo ./server --scylla-version nightly-master --scylla-repo-file-url https://downloads.scylladb.com/unstable/scylla/master/deb/unified/latest/scylladb-debug-master/scylla-debug.list
 
   test_active_releases:
     name: Test listing active releases
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - run: sudo ./server --list-active-releases
 
   test_tarball_install:
@@ -100,7 +100,7 @@ jobs:
         name: Install prerequisites (Rocky)
         run: dnf install -y --allowerasing tar gzip findutils curl
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Test Scylla tarball download and extract
         run: |
@@ -144,7 +144,7 @@ jobs:
         name: Install prerequisites (Rocky)
         run: dnf install -y --allowerasing curl hostname
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Install Scylla Manager
         run: ./manager --manager-version 3.10.0
