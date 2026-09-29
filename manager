@@ -35,10 +35,28 @@ run_cmd() {
   fi
 }
 
-query_default_version() {
-  DEFAULT_MANAGER_VERSION_RAW=$(curl -s --retry 3 --max-time 5 "https://repositories.scylladb.com/scylla/check_version?system=manager")
+# Release metadata is read from the public downloads bucket: each release series
+# has a relocatable/scylladb-manager-<series>/ folder holding its tarballs.
+S3_BUCKET_URL="https://s3.amazonaws.com/downloads.scylladb.com"
+RELOCATABLE_PREFIX="downloads/scylla-manager/relocatable"
 
-  DEFAULT_MANAGER_VERSION=$(echo $DEFAULT_MANAGER_VERSION_RAW | sed -e "s/.*version\":\"\(.*\)\".*/\1/g")
+# Set DEFAULT_MANAGER_VERSION to the latest GA (non-RC) patch of the newest released series
+query_default_version() {
+  DEFAULT_MANAGER_VERSION=""
+  local all_series=$(curl -s --retry 3 --max-time 10 "$S3_BUCKET_URL?prefix=$RELOCATABLE_PREFIX/scylladb-manager-&delimiter=/" 2>/dev/null \
+    | grep -oE "<Prefix>$RELOCATABLE_PREFIX/scylladb-manager-[0-9]+\.[0-9]+/</Prefix>" \
+    | sed -e "s|.*/scylladb-manager-\(.*\)/</Prefix>|\1|" \
+    | sort -V -r || true)
+
+  for series in $all_series; do
+    DEFAULT_MANAGER_VERSION=$(curl -s --retry 3 --max-time 10 "$S3_BUCKET_URL?prefix=$RELOCATABLE_PREFIX/scylladb-manager-$series/scylla-manager_$series.&delimiter=/" 2>/dev/null \
+      | grep -oE "scylla-manager_${series//./\\.}\.[0-9]+-" \
+      | sed -e "s/^scylla-manager_//; s/-$//" \
+      | sort -V | tail -n1 || true)
+    if [ -n "$DEFAULT_MANAGER_VERSION" ]; then
+      break
+    fi
+  done
 }
 
 packages_update() {
@@ -144,6 +162,10 @@ main() {
 
   if [ -z "$MANAGER_VERSION" ] && [ -z "$MANAGER_REPO_FILE_URL" ]; then
     query_default_version
+    if [ -z "$DEFAULT_MANAGER_VERSION" ]; then
+      echo "Unable to determine the latest Scylla Manager version from $S3_BUCKET_URL, please specify one with --manager-version"
+      exit 1
+    fi
     MANAGER_VERSION="$DEFAULT_MANAGER_VERSION"
   fi
 

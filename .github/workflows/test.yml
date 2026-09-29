@@ -4,8 +4,32 @@ on:
   pull_request:
 
 jobs:
+  active_releases:
+    name: Get active releases
+    runs-on: ubuntu-latest
+    outputs:
+      series: ${{ steps.list.outputs.series }}
+      first_releases: ${{ steps.list.outputs.first_releases }}
+      latest_version: ${{ steps.list.outputs.latest_version }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: list
+        run: |
+          releases=$(./server --list-active-releases) || { echo "$releases"; exit 1; }
+          echo "$releases"
+          series=$(echo "$releases" | sed -n 's/^  \([0-9]\+\.[0-9]\+\): .*/\1/p')
+          latest_version=$(echo "$releases" | sed -n 's/^  [0-9.]\+: \([0-9.]\+\)\( \[LTS\]\)\? - latest$/\1/p')
+          if [ -z "$series" ] || [ -z "$latest_version" ]; then
+            echo "Failed to get active releases"
+            exit 1
+          fi
+          echo "series=$(echo "$series" | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+          echo "first_releases=$(echo "$series" | sed 's/$/.0/' | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+          echo "latest_version=$latest_version" >> "$GITHUB_OUTPUT"
+
   test_supported_versions:
     name: Test on ${{matrix.container }} with ${{ matrix.version }}
+    needs: active_releases
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.container }}
@@ -13,12 +37,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version:
-         - 2025.1.0
-         - 2025.4.0
-         - 2026.1.0
+        version: ${{ fromJSON(needs.active_releases.outputs.first_releases) }}
         container:
-          - ubuntu:22.04
+          - ubuntu:26.04
           - ubuntu:24.04
           - debian:12
           - debian:13
@@ -44,11 +65,16 @@ jobs:
         run: ./server --scylla-version ${{ matrix.version }} ${{ matrix.product }}
 
   test_latest_in_version:
-    name: Test installation for latest in specific version
+    name: Test installation for latest in ${{ matrix.series }}
+    needs: active_releases
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        series: ${{ fromJSON(needs.active_releases.outputs.series) }}
     steps:
       - uses: actions/checkout@v5
-      - run: sudo ./server --scylla-version 2026.1
+      - run: sudo ./server --scylla-version ${{ matrix.series }}
 
   test_nightly_master:
     name: Test installation for nightly-master version
@@ -80,6 +106,7 @@ jobs:
 
   test_tarball_install:
     name: Test tarball installation on ${{ matrix.container }}
+    needs: active_releases
     runs-on: ubuntu-latest
     container:
       image: ${{ matrix.container }}
@@ -88,7 +115,7 @@ jobs:
       fail-fast: false
       matrix:
         container:
-          - ubuntu:22.04
+          - ubuntu:26.04
           - ubuntu:24.04
           - rockylinux:9
     steps:
@@ -105,7 +132,7 @@ jobs:
       - name: Test Scylla tarball download and extract
         run: |
           # Run only the download+extract portion; install.sh requires systemd which isn't available in containers
-          export SCYLLA_VERSION=2025.3.0
+          export SCYLLA_VERSION=${{ needs.active_releases.outputs.latest_version }}
           export ARCH=$(uname -m)
           SCYLLA_RELEASE=$(echo $SCYLLA_VERSION | sed -e "s/\([[:digit:]]\+\.[[:digit:]]\+\).*/\1/g")
           if [ "$ARCH" = "aarch64" ]; then ARCH_SUFFIX="aarch64"; else ARCH_SUFFIX="x86_64"; fi
@@ -132,7 +159,7 @@ jobs:
       fail-fast: false
       matrix:
         container:
-          - ubuntu:22.04
+          - ubuntu:26.04
           - ubuntu:24.04
           - rockylinux:9
     steps:
@@ -148,3 +175,10 @@ jobs:
 
       - name: Install Scylla Manager
         run: ./manager --manager-version 3.10.0
+
+  test_manager_latest:
+    name: Test manager installation for latest version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo ./manager
